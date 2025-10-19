@@ -118,13 +118,22 @@ export async function updateUserVectorFromFeedback(input: UpdateVectorInput) {
  * Get user's feedback history
  *
  * @param input - Feedback history query input
- * @returns List of feedback records
+ * @returns List of feedback records with paper data
  */
 export async function getFeedbackHistory(input: FeedbackHistoryInput) {
   const feedback = await prisma.feedback.findMany({
     where: {
       userId: input.userId,
       ...(input.action && { action: input.action }),
+    },
+    include: {
+      paper: {
+        include: {
+          enriched: true,
+          scores: true,
+          feedback: true,
+        },
+      },
     },
     orderBy: {
       createdAt: 'desc',

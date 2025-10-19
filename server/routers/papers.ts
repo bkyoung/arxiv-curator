@@ -45,12 +45,14 @@ export const papersRouter = router({
         where.status = status;
       }
 
-      // Query papers with enrichment data
+      // Query papers with enrichment data, scores, and feedback
       const [papers, total] = await Promise.all([
         prisma.paper.findMany({
           where,
           include: {
             enriched: true,
+            scores: true,
+            feedback: true,
           },
           orderBy: {
             pubDate: 'desc',
@@ -78,6 +80,8 @@ export const papersRouter = router({
         where: { id: input.id },
         include: {
           enriched: true,
+          scores: true,
+          feedback: true,
         },
       });
 

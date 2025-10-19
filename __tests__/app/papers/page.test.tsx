@@ -12,6 +12,11 @@ import PapersPage from '@/app/papers/page';
 // Mock tRPC
 const mockListPapers = vi.fn();
 const mockGetStats = vi.fn();
+const mockSaveMutation = vi.fn();
+const mockDismissMutation = vi.fn();
+const mockThumbsUpMutation = vi.fn();
+const mockThumbsDownMutation = vi.fn();
+const mockHideMutation = vi.fn();
 
 vi.mock('@/lib/trpc', () => ({
   trpc: {
@@ -21,6 +26,23 @@ vi.mock('@/lib/trpc', () => ({
       },
       stats: {
         useQuery: () => mockGetStats(),
+      },
+    },
+    feedback: {
+      save: {
+        useMutation: () => ({ mutate: mockSaveMutation, isLoading: false }),
+      },
+      dismiss: {
+        useMutation: () => ({ mutate: mockDismissMutation, isLoading: false }),
+      },
+      thumbsUp: {
+        useMutation: () => ({ mutate: mockThumbsUpMutation, isLoading: false }),
+      },
+      thumbsDown: {
+        useMutation: () => ({ mutate: mockThumbsDownMutation, isLoading: false }),
+      },
+      hide: {
+        useMutation: () => ({ mutate: mockHideMutation, isLoading: false }),
       },
     },
   },
@@ -290,5 +312,264 @@ describe('Papers Page', () => {
 
     // Date should be formatted as "Jan 15, 2024" or similar
     expect(screen.getByText(/Jan 15, 2024/)).toBeInTheDocument();
+  });
+
+  it('should render ScoreBreakdown when paper has scores', () => {
+    const papersData = {
+      papers: [
+        {
+          id: 'paper-1',
+          arxivId: '2401.00001',
+          version: 1,
+          title: 'Test Paper',
+          authors: ['Alice'],
+          abstract: 'Abstract',
+          categories: ['cs.AI'],
+          primaryCategory: 'cs.AI',
+          status: 'enriched',
+          pubDate: new Date('2024-01-15'),
+          updatedDate: new Date('2024-01-15'),
+          pdfUrl: 'https://arxiv.org/pdf/2401.00001',
+          rawMetadata: {},
+          codeUrl: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          enriched: null,
+          scores: [
+            {
+              id: 'score-1',
+              paperId: 'paper-1',
+              novelty: 0.8,
+              evidence: 0.9,
+              velocity: 0.5,
+              personalFit: 0.7,
+              labPrior: 0.05,
+              mathPenalty: 0.15,
+              finalScore: 0.75,
+              whyShown: null,
+              createdAt: new Date(),
+            },
+          ],
+          feedback: [],
+        },
+      ],
+      total: 1,
+      hasMore: false,
+    };
+
+    mockListPapers.mockReturnValue({ data: papersData, isLoading: false });
+    mockGetStats.mockReturnValue({ data: undefined });
+
+    render(<PapersPage />);
+
+    // Should show score breakdown
+    expect(screen.getByText(/Score Breakdown/i)).toBeInTheDocument();
+    expect(screen.getByText('0.75')).toBeInTheDocument(); // Final score
+  });
+
+  it('should render FeedbackActions for each paper', () => {
+    const papersData = {
+      papers: [
+        {
+          id: 'paper-1',
+          arxivId: '2401.00001',
+          version: 1,
+          title: 'Test Paper',
+          authors: ['Alice'],
+          abstract: 'Abstract',
+          categories: ['cs.AI'],
+          primaryCategory: 'cs.AI',
+          status: 'enriched',
+          pubDate: new Date('2024-01-15'),
+          updatedDate: new Date('2024-01-15'),
+          pdfUrl: 'https://arxiv.org/pdf/2401.00001',
+          rawMetadata: {},
+          codeUrl: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          enriched: null,
+          scores: [],
+          feedback: [],
+        },
+      ],
+      total: 1,
+      hasMore: false,
+    };
+
+    mockListPapers.mockReturnValue({ data: papersData, isLoading: false });
+    mockGetStats.mockReturnValue({ data: undefined });
+
+    render(<PapersPage />);
+
+    // Should have feedback action buttons
+    expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /dismiss/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /thumbs up/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /thumbs down/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /hide/i })).toBeInTheDocument();
+  });
+
+  it('should render WhyShown when score has whyShown data', () => {
+    const papersData = {
+      papers: [
+        {
+          id: 'paper-1',
+          arxivId: '2401.00001',
+          version: 1,
+          title: 'Test Paper',
+          authors: ['Alice'],
+          abstract: 'Abstract',
+          categories: ['cs.AI'],
+          primaryCategory: 'cs.AI',
+          status: 'enriched',
+          pubDate: new Date('2024-01-15'),
+          updatedDate: new Date('2024-01-15'),
+          pdfUrl: 'https://arxiv.org/pdf/2401.00001',
+          rawMetadata: {},
+          codeUrl: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          enriched: {
+            id: 'enriched-1',
+            paperId: 'paper-1',
+            topics: ['agents'],
+            facets: [],
+            embedding: [],
+            mathDepth: 0.5,
+            hasCode: true,
+            hasData: false,
+            hasBaselines: true,
+            hasAblations: false,
+            hasMultipleEvals: true,
+            enrichedAt: new Date(),
+          },
+          scores: [
+            {
+              id: 'score-1',
+              paperId: 'paper-1',
+              novelty: 0.8,
+              evidence: 0.9,
+              velocity: 0.5,
+              personalFit: 0.7,
+              labPrior: 0.05,
+              mathPenalty: 0.15,
+              finalScore: 0.75,
+              whyShown: {
+                novelty: 0.8,
+                evidence: 0.9,
+                velocity: 0.5,
+                personalFit: 0.7,
+                labPrior: 0.05,
+                mathPenalty: 0.15,
+              },
+              createdAt: new Date(),
+            },
+          ],
+          feedback: [],
+        },
+      ],
+      total: 1,
+      hasMore: false,
+    };
+
+    mockListPapers.mockReturnValue({ data: papersData, isLoading: false });
+    mockGetStats.mockReturnValue({ data: undefined });
+
+    render(<PapersPage />);
+
+    // Should show WhyShown component (multiple instances of "why shown" text)
+    const whyShownElements = screen.getAllByText(/Why Shown/i);
+    expect(whyShownElements.length).toBeGreaterThan(0);
+  });
+
+  it('should show saved state when paper has save feedback', async () => {
+    const papersData = {
+      papers: [
+        {
+          id: 'paper-1',
+          arxivId: '2401.00001',
+          version: 1,
+          title: 'Test Paper',
+          authors: ['Alice'],
+          abstract: 'Abstract',
+          categories: ['cs.AI'],
+          primaryCategory: 'cs.AI',
+          status: 'enriched',
+          pubDate: new Date('2024-01-15'),
+          updatedDate: new Date('2024-01-15'),
+          pdfUrl: 'https://arxiv.org/pdf/2401.00001',
+          rawMetadata: {},
+          codeUrl: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          enriched: null,
+          scores: [],
+          feedback: [
+            {
+              id: 'feedback-1',
+              userId: 'user-1',
+              paperId: 'paper-1',
+              action: 'save',
+              weight: 1.0,
+              context: null,
+              createdAt: new Date(),
+            },
+          ],
+        },
+      ],
+      total: 1,
+      hasMore: false,
+    };
+
+    mockListPapers.mockReturnValue({ data: papersData, isLoading: false });
+    mockGetStats.mockReturnValue({ data: undefined });
+
+    render(<PapersPage />);
+
+    // Should show saved state
+    expect(screen.getByRole('button', { name: /saved/i })).toBeInTheDocument();
+  });
+
+  it('should call save mutation when save button clicked', async () => {
+    const user = userEvent.setup();
+    const papersData = {
+      papers: [
+        {
+          id: 'paper-1',
+          arxivId: '2401.00001',
+          version: 1,
+          title: 'Test Paper',
+          authors: ['Alice'],
+          abstract: 'Abstract',
+          categories: ['cs.AI'],
+          primaryCategory: 'cs.AI',
+          status: 'enriched',
+          pubDate: new Date('2024-01-15'),
+          updatedDate: new Date('2024-01-15'),
+          pdfUrl: 'https://arxiv.org/pdf/2401.00001',
+          rawMetadata: {},
+          codeUrl: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          enriched: null,
+          scores: [],
+          feedback: [],
+        },
+      ],
+      total: 1,
+      hasMore: false,
+    };
+
+    mockListPapers.mockReturnValue({ data: papersData, isLoading: false });
+    mockGetStats.mockReturnValue({ data: undefined });
+
+    render(<PapersPage />);
+
+    const saveButton = screen.getByRole('button', { name: /save/i });
+    await user.click(saveButton);
+
+    await waitFor(() => {
+      expect(mockSaveMutation).toHaveBeenCalled();
+    });
   });
 });

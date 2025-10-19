@@ -1,9 +1,9 @@
 'use client';
 
 /**
- * Papers Page
+ * Saved Papers Page
  *
- * Display and browse enriched papers from arXiv
+ * Display papers saved by the user
  */
 
 import { useState } from 'react';
@@ -16,32 +16,22 @@ import { ScoreBreakdown } from '@/components/ScoreBreakdown';
 import { FeedbackActions } from '@/components/FeedbackActions';
 import { WhyShown } from '@/components/WhyShown';
 import {
-  FileText,
+  Bookmark,
   Calendar,
   Users,
   Tag,
   ExternalLink,
-  ChevronLeft,
-  ChevronRight,
   Loader2,
-  BarChart3,
 } from 'lucide-react';
 
-const ITEMS_PER_PAGE = 20;
-
-export default function PapersPage() {
-  const [page, setPage] = useState(0);
+export default function SavedPage() {
   const [userId] = useState('user-1'); // TODO: Get from auth context
 
-  // Fetch papers
-  const { data: papersData, isLoading, refetch } = trpc.papers.list.useQuery({
-    limit: ITEMS_PER_PAGE,
-    offset: page * ITEMS_PER_PAGE,
-    status: 'enriched', // Only show enriched papers
+  // Fetch saved papers
+  const { data: savedFeedback, isLoading, refetch } = trpc.feedback.getHistory.useQuery({
+    userId,
+    action: 'save',
   });
-
-  // Fetch stats
-  const { data: stats } = trpc.papers.stats.useQuery();
 
   // Feedback mutations
   const saveMutation = trpc.feedback.save.useMutation({
@@ -60,11 +50,6 @@ export default function PapersPage() {
     onSuccess: () => refetch(),
   });
 
-  const papers = papersData?.papers || [];
-  const total = papersData?.total || 0;
-  const hasMore = papersData?.hasMore || false;
-  const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
-
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -77,41 +62,13 @@ export default function PapersPage() {
     <div className="container mx-auto py-8 px-4 max-w-7xl">
       {/* Header */}
       <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <FileText className="h-8 w-8" />
-              <h1 className="text-3xl font-bold">Papers</h1>
-            </div>
-            <p className="text-muted-foreground">Browse enriched arXiv papers</p>
-          </div>
-
-          {/* Stats */}
-          {stats && (
-            <Card className="min-w-[200px]">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <BarChart3 className="h-4 w-4" />
-                  Statistics
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-1">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Total:</span>
-                  <span className="font-medium">{stats.total}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Enriched:</span>
-                  <span className="font-medium">{stats.enriched}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Pending:</span>
-                  <span className="font-medium">{stats.pending}</span>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+        <div className="flex items-center gap-3 mb-2">
+          <Bookmark className="h-8 w-8" />
+          <h1 className="text-3xl font-bold">Saved Papers</h1>
         </div>
+        <p className="text-muted-foreground">
+          Papers you&apos;ve saved for later reading
+        </p>
       </div>
 
       {/* Loading state */}
@@ -122,18 +79,17 @@ export default function PapersPage() {
       )}
 
       {/* Empty state */}
-      {!isLoading && papers.length === 0 && (
+      {!isLoading && (!savedFeedback || savedFeedback.length === 0) && (
         <Card>
           <CardContent className="py-12">
             <div className="text-center">
-              <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-medium mb-2">No papers found</h3>
+              <Bookmark className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <h3 className="text-lg font-medium mb-2">No saved papers yet</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                No enriched papers available yet. Configure your settings and run the worker to
-                ingest papers.
+                Save papers from the papers page to read them later.
               </p>
               <Button asChild>
-                <a href="/settings">Go to Settings</a>
+                <a href="/papers">Browse Papers</a>
               </Button>
             </div>
           </CardContent>
@@ -141,9 +97,12 @@ export default function PapersPage() {
       )}
 
       {/* Papers list */}
-      {!isLoading && papers.length > 0 && (
+      {!isLoading && savedFeedback && savedFeedback.length > 0 && (
         <div className="space-y-4">
-          {papers.map((paper) => {
+          {savedFeedback.map((feedback) => {
+            const paper = feedback.paper;
+            if (!paper) return null;
+
             const score = paper.scores?.[0];
             const isSaved = paper.feedback?.some((f) => f.action === 'save');
             const isThumbsUp = paper.feedback?.some((f) => f.action === 'thumbs_up');
@@ -258,35 +217,6 @@ export default function PapersPage() {
               </Card>
             );
           })}
-        </div>
-      )}
-
-      {/* Pagination */}
-      {!isLoading && papers.length > 0 && totalPages > 1 && (
-        <div className="flex items-center justify-between mt-8">
-          <div className="text-sm text-muted-foreground">
-            Page {page + 1} of {totalPages} ({total} papers total)
-          </div>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-              disabled={page === 0}
-            >
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => p + 1)}
-              disabled={!hasMore}
-            >
-              Next
-              <ChevronRight className="h-4 w-4 ml-1" />
-            </Button>
-          </div>
         </div>
       )}
     </div>

@@ -447,6 +447,15 @@ describe('Feedback Library', () => {
       expect(result).toEqual(mockFeedback);
       expect(prisma.feedback.findMany).toHaveBeenCalledWith({
         where: { userId: 'user-1' },
+        include: {
+          paper: {
+            include: {
+              enriched: true,
+              scores: true,
+              feedback: true,
+            },
+          },
+        },
         orderBy: { createdAt: 'desc' },
       });
     });
@@ -478,6 +487,15 @@ describe('Feedback Library', () => {
           userId: 'user-1',
           action: 'save',
         },
+        include: {
+          paper: {
+            include: {
+              enriched: true,
+              scores: true,
+              feedback: true,
+            },
+          },
+        },
         orderBy: { createdAt: 'desc' },
       });
     });
@@ -494,6 +512,15 @@ describe('Feedback Library', () => {
 
       expect(prisma.feedback.findMany).toHaveBeenCalledWith({
         where: { userId: 'user-1' },
+        include: {
+          paper: {
+            include: {
+              enriched: true,
+              scores: true,
+              feedback: true,
+            },
+          },
+        },
         orderBy: { createdAt: 'desc' },
         take: 10,
       });
