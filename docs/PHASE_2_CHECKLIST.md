@@ -1,6 +1,7 @@
 # Phase 2: Personalization & Scoring - Implementation Checklist
 
-**Status**: Not Started
+**Status**: In Progress - Day 1 (Core Scoring + Evidence Signal)
+**Start Date**: October 19, 2025
 **Timeline**: Week 3 (Serial Development Roadmap)
 **Dependencies**: Phase 1 (Ingestion & Enrichment) ✅ Complete
 
@@ -18,12 +19,12 @@ Phase 2 implements the personalization and ranking engine that makes papers pers
 
 ### 1. Ranker Agent: Multi-Signal Scoring
 
-- [ ] **Core Scoring Infrastructure**
-  - [ ] Define `Score` model schema (if not already in Prisma)
-  - [ ] Implement `server/agents/ranker.ts` - Main Ranker Agent
-  - [ ] Implement `server/lib/scoring.ts` - Core scoring functions
-  - [ ] Define scoring weights and configuration
-  - [ ] Test basic scoring pipeline
+- [x] **Core Scoring Infrastructure** ✅ Day 1 Complete
+  - [x] Define `Score` model schema (already in Prisma, added unique constraint)
+  - [x] Implement `server/agents/ranker.ts` - Main Ranker Agent
+  - [x] Implement `server/lib/scoring.ts` - Core scoring functions
+  - [x] Define scoring weights and configuration
+  - [x] Test basic scoring pipeline (15 tests passing)
 
 - [ ] **Signal 1: Novelty (N)** - 20% weight
   - [ ] Implement centroid distance calculation
@@ -40,15 +41,15 @@ Phase 2 implements the personalization and ranking engine that makes papers pers
   - [ ] Combine sub-signals: `N = 0.5 × centroid_distance + 0.5 × novel_keywords`
   - [ ] Test novelty scoring with sample papers
 
-- [ ] **Signal 2: Evidence (E)** - 25% weight
-  - [ ] Use existing evidence signals from Enricher Agent:
-    - [ ] `hasBaselines` → +0.3
-    - [ ] `hasAblations` → +0.2
-    - [ ] `hasCode` → +0.2
-    - [ ] `hasData` → +0.15
-    - [ ] `hasMultipleEvals` → +0.15
-  - [ ] Implement evidence scoring function
-  - [ ] Test evidence scoring with sample papers
+- [x] **Signal 2: Evidence (E)** - 25% weight ✅ Day 1 Complete
+  - [x] Use existing evidence signals from Enricher Agent:
+    - [x] `hasBaselines` → +0.3
+    - [x] `hasAblations` → +0.2
+    - [x] `hasCode` → +0.2
+    - [x] `hasData` → +0.15
+    - [x] `hasMultipleEvals` → +0.15
+  - [x] Implement evidence scoring function
+  - [x] Test evidence scoring with sample papers (10 tests passing)
 
 - [ ] **Signal 3: Velocity (V)** - 10% weight (OPTIONAL - can defer)
   - [ ] Daily topic count aggregation (background job)

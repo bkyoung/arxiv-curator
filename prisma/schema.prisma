@@ -191,7 +191,7 @@ model PaperEnriched {
 
 model Score {
   id      String @id @default(cuid())
-  paperId String
+  paperId String @unique
 
   // Signal components (0.0-1.0 each)
   novelty     Float @default(0.0)
@@ -211,7 +211,6 @@ model Score {
 
   paper Paper @relation(fields: [paperId], references: [id], onDelete: Cascade)
 
-  @@index([paperId])
   @@index([finalScore])
 }
 
