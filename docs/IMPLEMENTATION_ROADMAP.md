@@ -79,11 +79,11 @@ Stream D: Summaries (Actually can start after Phase 1!)
 
 ### Timeline: 10 Weeks Critical Path
 
-| Week | Phase | Deliverables |
-|------|-------|-------------|
-| 1 | Foundation | PostgreSQL + pgvector, Prisma schema, NextAuth, pg-boss, tRPC |
-| 2 | Ingestion | Scout Agent, arXiv OAI-PMH/Atom parsing, rate limiting, basic enrichment |
-| 3 | Personalization | Classifier Agent, Ranker Agent, rules engine, vector profiles, feedback system |
+| Week | Phase | Deliverables | Status |
+|------|-------|-------------|--------|
+| 1 | Foundation | PostgreSQL + pgvector, Prisma schema, NextAuth, pg-boss, tRPC | ✅ Complete |
+| 2 | Ingestion & Enrichment | Scout Agent, arXiv OAI-PMH/Atom parsing, rate limiting, enrichment, UI | ✅ Complete |
+| 3 | Personalization | Ranker Agent, rules engine, vector profiles, feedback system | 📋 Planned |
 | 4 | Briefings & UI | Recommender Agent, three-pane layout, paper cards, hotkeys, digest generation |
 | 5 | Summaries | Summary generation (skim), LLM integration (local + cloud), summary UI |
 | 6-7 | Critical Analysis | PDF parsing, Analyst Agent (Depths A/B/C), critique UI, job status tracking |
@@ -111,19 +111,21 @@ Stream D: Summaries (Actually can start after Phase 1!)
 
 ## Detailed Phase Breakdown
 
-### Phase 0: Foundation (Week 1)
+### Phase 0: Foundation (Week 1) ✅ COMPLETE
 
 **Critical Infrastructure - All downstream work depends on this**
 
+**Completion Date**: October 19, 2025
+
 #### Deliverables
-- [ ] PostgreSQL 17+ with pgvector extension
-- [ ] Prisma schema (core models: User, UserProfile, Paper, PaperEnriched, Score, Feedback)
-- [ ] Auth.js v5 (NextAuth.js v5) integration (email/password, optional OAuth)
-- [ ] pg-boss job queue setup
-- [ ] tRPC baseline routing
-- [ ] Docker Compose development environment
-- [ ] MinIO S3-compatible storage
-- [ ] Basic Next.js 15 app structure (App Router, React 19)
+- [x] PostgreSQL 17+ with pgvector extension
+- [x] Prisma schema (core models: User, UserProfile, Paper, PaperEnriched, Score, Feedback)
+- [x] Auth.js v5 (NextAuth.js v5) integration (email/password, optional OAuth)
+- [x] pg-boss job queue setup
+- [x] tRPC baseline routing
+- [x] Docker Compose development environment
+- [x] MinIO S3-compatible storage
+- [x] Basic Next.js 15 app structure (App Router, React 19)
 
 #### Key Files Created
 ```
@@ -151,22 +153,26 @@ docker-compose.yml
 
 ---
 
-### Phase 1: Ingestion & Enrichment (Week 2)
+### Phase 1: Ingestion & Enrichment (Week 2) ✅ COMPLETE
 
 **Data Pipeline - Feeds all downstream features**
 
+**Completion Date**: October 19, 2025
+
 #### Deliverables
-- [ ] Scout Agent: arXiv OAI-PMH client
-- [ ] Scout Agent: Atom feed RSS parser
-- [ ] Rate limiter (1 request/3 seconds for arXiv)
-- [ ] Paper version supersedence logic
-- [ ] Enricher Agent Tier 0:
-  - [ ] Embedding generation (local via ollama or cloud)
-  - [ ] Math depth estimation
-  - [ ] Topic/facet classification (zero-shot LLM)
-  - [ ] Evidence signal detection (baselines, ablations, code, data)
-- [ ] Settings UI: Sources & Categories selection
-- [ ] Basic paper list view
+- [x] Scout Agent: arXiv OAI-PMH client
+- [x] Scout Agent: Atom feed RSS parser
+- [x] Rate limiter (1 request/3 seconds for arXiv)
+- [x] Paper version supersedence logic
+- [x] Enricher Agent Tier 0:
+  - [x] Embedding generation (local via ollama or cloud)
+  - [x] Math depth estimation
+  - [x] Topic/facet classification (zero-shot LLM)
+  - [x] Evidence signal detection (baselines, ablations, code, data)
+- [x] Settings UI: Sources & Categories selection (with shadcn/ui)
+- [x] Basic paper list view (with enrichment badges and pagination)
+- [x] Worker process with LangGraph.js orchestration
+- [x] Comprehensive test suite (92 tests passing)
 
 #### LangGraph.js Workflow (Scout → Enrich)
 ```typescript

@@ -2,7 +2,7 @@
 
 AI-powered research paper curation system for arXiv. Transform overwhelming daily feeds of hundreds/thousands of papers into a curated digest of 10-20 high-signal papers personalized to your research interests.
 
-**Status**: Phase 0 (Foundation) - ✅ Complete
+**Status**: Phase 1 (Ingestion & Enrichment) - ✅ Complete
 
 ## Features
 
@@ -75,16 +75,34 @@ arxiv-curator/
 │   ├── queue.ts          # pg-boss job queue
 │   ├── storage.ts        # MinIO S3 client
 │   ├── trpc.ts           # tRPC configuration
+│   ├── agents/           # AI agents
+│   │   ├── scout.ts      # arXiv ingestion agent
+│   │   └── enricher.ts   # Paper enrichment agent
+│   ├── lib/              # Server utilities
+│   │   ├── arxiv.ts      # arXiv API client
+│   │   ├── embeddings.ts # Embedding generation
+│   │   ├── classifier.ts # LLM classification
+│   │   └── rate-limiter.ts # API rate limiting
 │   └── routers/          # tRPC routers
 │       ├── _app.ts       # Root router
-│       └── health.ts     # Health check endpoint
+│       ├── health.ts     # Health check endpoint
+│       ├── papers.ts     # Papers CRUD & queries
+│       └── settings.ts   # User settings
 ├── lib/                   # Shared utilities
-│   └── trpc.tsx          # tRPC React provider
+│   ├── trpc.tsx          # tRPC React provider
+│   └── utils.ts          # Utility functions (cn, etc.)
+├── worker/                # Background workers
+│   ├── index.ts          # Worker process entry point
+│   └── workflows/        # LangGraph.js workflows
+│       └── scout-enrich.ts # Scout → Enrich pipeline
+├── components/            # Reusable UI components
+│   └── ui/               # shadcn/ui components
 ├── prisma/                # Database schema & migrations
 │   ├── schema.prisma     # Prisma schema (17 models)
 │   └── migrations/       # Migration files
 ├── __tests__/             # Test files
-│   └── server/           # Server-side tests
+│   ├── server/           # Server-side tests (agents, routers, lib)
+│   └── app/              # UI component tests
 ├── docs/                  # Documentation
 │   ├── DESIGN_SPEC.md    # Full design specification
 │   ├── IMPLEMENTATION_ROADMAP.md  # 10-week roadmap
@@ -133,11 +151,19 @@ npm test -- health.test.ts
 npm test -- --coverage
 ```
 
-Current test coverage: **8 tests passing**
+Current test coverage: **92 tests passing** across 15 test files
+- Scout Agent (5 unit + 5 integration)
+- Enricher Agent (11 unit + 8 integration)
+- Scout-Enrich Workflow (6 tests)
+- arXiv library (13 tests)
+- Rate limiter (3 tests)
+- Embeddings & Classification (tested in agent tests)
+- tRPC routers - Papers (7 tests), Settings (8 tests)
+- UI components - Settings page (7 tests), Papers page (7 tests)
 - Database connectivity (3 tests)
 - Health endpoint (3 tests)
-- Job queue (1 test)
-- Storage (1 test)
+- Job queue (3 tests)
+- Storage (3 tests)
 
 ## Docker Services
 
@@ -209,15 +235,49 @@ The following infrastructure is complete and tested:
 - ✅ Environment variable validation (Zod)
 - ✅ Health check endpoint (database + storage)
 - ✅ tRPC React provider
-- ✅ Test suite (8 tests passing)
 - ✅ Docker Compose development environment
+
+## Phase 1: Ingestion & Enrichment ✅
+
+Data pipeline and UI foundation complete:
+
+**Scout Agent** (arXiv Ingestion):
+- ✅ OAI-PMH category fetcher
+- ✅ Atom feed parser for recent papers
+- ✅ Rate limiter (1 req/3sec for arXiv compliance)
+- ✅ Paper version supersedence handling
+- ✅ Comprehensive test coverage (10 tests)
+
+**Enricher Agent** (Tier 0 Processing):
+- ✅ Embedding generation (local ollama + cloud fallback)
+- ✅ Math depth estimation (LaTeX density + theory keywords)
+- ✅ Topic/facet classification (zero-shot LLM)
+- ✅ Evidence signal detection (baselines, ablations, code, data)
+- ✅ Comprehensive test coverage (19 tests)
+
+**Worker Process**:
+- ✅ LangGraph.js workflow orchestration
+- ✅ Scout → Enrich pipeline
+- ✅ Job queue integration with pg-boss
+- ✅ Workflow tests (6 tests)
+
+**UI Pages** (shadcn/ui + React 19):
+- ✅ Settings page (category selection, local/cloud routing)
+- ✅ Papers page (list view with enrichment badges, pagination)
+- ✅ Updated homepage with quick action cards
+- ✅ UI component tests (14 tests)
+- ✅ tRPC router tests (15 tests)
+
+**Total**: 92 tests passing across 15 test files
 
 ## Roadmap
 
-**Phase 1** (Week 2): Ingestion & Enrichment
-- Scout Agent (arXiv OAI-PMH client)
-- Enricher Agent (embeddings, classification)
-- Worker process (LangGraph.js)
+**Phase 1** (Week 2): Ingestion & Enrichment ✅
+- ✅ Scout Agent (arXiv OAI-PMH/Atom client)
+- ✅ Enricher Agent (embeddings, classification, evidence detection)
+- ✅ Worker process (LangGraph.js workflow orchestration)
+- ✅ Settings UI (category selection, local/cloud routing)
+- ✅ Papers UI (list view with enrichment badges)
 
 **Phase 2** (Week 3): Personalization & Scoring
 - Multi-signal ranking algorithm
