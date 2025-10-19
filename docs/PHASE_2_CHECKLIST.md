@@ -1,6 +1,6 @@
 # Phase 2: Personalization & Scoring - Implementation Checklist
 
-**Status**: In Progress - Day 3 Complete ✅ (Next: Day 4 - Feedback System)
+**Status**: In Progress - Day 4 Complete ✅ (Next: Day 5 - UI Components)
 **Start Date**: October 19, 2025
 **Timeline**: Week 3 (Serial Development Roadmap)
 **Dependencies**: Phase 1 (Ingestion & Enrichment) ✅ Complete
@@ -127,35 +127,48 @@ Phase 2 implements the personalization and ranking engine that makes papers pers
   - [ ] Default exploration rate: `0.15`
   - [ ] Test default configuration
 
-### 3. Feedback System
+### 3. Feedback System ✅ Day 4 Complete
 
-- [ ] **Data Model**
-  - [ ] Verify `Feedback` model exists in Prisma schema
-  - [ ] Fields: `userId`, `paperId`, `action` (save/hide/upvote/downvote), `timestamp`
-  - [ ] Create indexes for efficient queries
-  - [ ] Test feedback persistence
+- [x] **Data Model**
+  - [x] Verify `Feedback` model exists in Prisma schema ✅
+  - [x] Fields: `userId`, `paperId`, `action` (save/dismiss/thumbs_up/thumbs_down/hide), `timestamp`
+  - [x] Indexes already exist for efficient queries
+  - [x] Test feedback persistence (6 tests)
 
-- [ ] **Feedback Actions**
-  - [ ] Implement `savePaper()` - Mark paper as saved
-  - [ ] Implement `hidePaper()` - Mark paper as hidden/dismissed
-  - [ ] Implement `upvotePaper()` - Thumbs up
-  - [ ] Implement `downvotePaper()` - Thumbs down
-  - [ ] Store feedback in database
-  - [ ] Test feedback actions
+- [x] **Feedback Actions**
+  - [x] Implement `recordFeedback()` - Record all feedback types
+  - [x] Save action - positive feedback
+  - [x] Dismiss action - negative feedback
+  - [x] Thumbs up action - positive feedback
+  - [x] Thumbs down action - negative feedback
+  - [x] Hide action - negative feedback
+  - [x] Store feedback in database
+  - [x] Test feedback actions (6 tests)
 
-- [ ] **Vector Profile Learning**
-  - [ ] Implement exponential moving average (EMA) update:
-    - [ ] On upvote/save: `user_vector = 0.9 × user_vector + 0.1 × paper_embedding`
-    - [ ] On downvote/hide: `user_vector = 0.9 × user_vector - 0.1 × paper_embedding`
-  - [ ] Update `UserProfile.profileVector` in database
-  - [ ] Normalize user vector after updates
-  - [ ] Test vector learning with sample feedback
+- [x] **Vector Profile Learning**
+  - [x] Implement exponential moving average (EMA) update:
+    - [x] On save/thumbs_up: `user_vector = 0.9 × user_vector + 0.1 × paper_embedding`
+    - [x] On dismiss/thumbs_down/hide: `user_vector = 0.9 × user_vector - 0.1 × paper_embedding`
+  - [x] Update `UserProfile.interestVector` in database
+  - [x] Normalize user vector after updates
+  - [x] Test vector learning with sample feedback (7 tests)
 
-- [ ] **Feedback History**
-  - [ ] Implement `getFeedbackHistory()` - Retrieve user's feedback
-  - [ ] Filter papers by feedback type (saved, hidden, etc.)
-  - [ ] Display feedback in UI
-  - [ ] Test feedback history retrieval
+- [x] **Feedback History**
+  - [x] Implement `getFeedbackHistory()` - Retrieve user's feedback
+  - [x] Filter papers by feedback type (saved, hidden, etc.)
+  - [x] Support limiting results
+  - [x] Test feedback history retrieval (4 tests)
+
+- [x] **tRPC Feedback Router** ✅ Day 4 Complete
+  - [x] Create `server/routers/feedback.ts`
+  - [x] `feedback.save` - Save paper mutation
+  - [x] `feedback.dismiss` - Dismiss paper mutation
+  - [x] `feedback.thumbsUp` - Thumbs up mutation
+  - [x] `feedback.thumbsDown` - Thumbs down mutation
+  - [x] `feedback.hide` - Hide paper mutation
+  - [x] `feedback.getHistory` - Get feedback history query
+  - [x] Add to `_app.ts` router
+  - [x] Each mutation automatically updates user vector
 
 ### 4. User Profile Management UI
 
