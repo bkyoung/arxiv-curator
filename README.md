@@ -2,7 +2,7 @@
 
 AI-powered research paper curation system for arXiv. Transform overwhelming daily feeds of hundreds/thousands of papers into a curated digest of 10-20 high-signal papers personalized to your research interests.
 
-**Status**: Phase 1 (Ingestion & Enrichment) - ✅ Complete
+**Status**: Phase 2 (Personalization & Scoring) - ✅ Complete
 
 ## Features
 
@@ -52,7 +52,16 @@ docker ps
 npx prisma migrate dev
 ```
 
-### 5. Start Development Server
+### 5. Seed Database
+
+```bash
+# Create default user and profile
+npx prisma db seed
+```
+
+This creates a default user (`user-1`) and profile needed for the application to function properly.
+
+### 6. Start Development Server
 
 ```bash
 npm run dev
@@ -151,12 +160,16 @@ npm test -- health.test.ts
 npm test -- --coverage
 ```
 
-Current test coverage: **92 tests passing** across 15 test files
+Current test coverage: **149 tests passing** across 15 test files
 - Scout Agent (5 unit + 5 integration)
 - Enricher Agent (11 unit + 8 integration)
 - Scout-Enrich Workflow (6 tests)
+- Ranker Agent (18 tests)
 - arXiv library (13 tests)
 - Rate limiter (3 tests)
+- Scoring library (45 tests)
+- Feedback system (17 tests)
+- Rules engine (10 tests)
 - Embeddings & Classification (tested in agent tests)
 - tRPC routers - Papers (7 tests), Settings (8 tests)
 - UI components - Settings page (7 tests), Papers page (7 tests)
@@ -200,6 +213,20 @@ npx prisma migrate deploy
 # Reset database (DEV ONLY)
 npx prisma migrate reset
 ```
+
+### Seeding
+
+```bash
+# Seed database with default user and profile
+npx prisma db seed
+
+# This creates:
+# - Default user with ID 'user-1'
+# - Default user profile with empty interest vector
+# - Default preferences (categories, settings, etc.)
+```
+
+**Note**: The seed script is required for the application to work properly. Run it after migrations.
 
 ### Prisma Studio
 
@@ -268,7 +295,9 @@ Data pipeline and UI foundation complete:
 - ✅ UI component tests (14 tests)
 - ✅ tRPC router tests (15 tests)
 
-**Total**: 92 tests passing across 15 test files
+**Phase 1 Total**: 92 tests passing across initial test files
+
+**Phase 2 Total**: 149 tests passing across 15 test files (including all Phase 1 + Phase 2 tests)
 
 ## Roadmap
 
@@ -279,10 +308,14 @@ Data pipeline and UI foundation complete:
 - ✅ Settings UI (category selection, local/cloud routing)
 - ✅ Papers UI (list view with enrichment badges)
 
-**Phase 2** (Week 3): Personalization & Scoring
-- Multi-signal ranking algorithm
-- User profile learning
-- Feedback system
+**Phase 2** (Week 3): Personalization & Scoring ✅
+- ✅ Multi-signal ranking algorithm (Novelty, Evidence, Personal Fit, Lab Prior, Math Penalty)
+- ✅ User profile learning (EMA-based interest vector updates)
+- ✅ Feedback system (save, dismiss, thumbs up/down, hide)
+- ✅ Rules engine (topic/keyword include/exclude)
+- ✅ Scoring library (45 tests)
+- ✅ Feedback integration (17 tests)
+- ✅ Ranker agent (18 tests)
 
 **Phase 3** (Week 4): Briefings & Core UI
 - Daily digest generation

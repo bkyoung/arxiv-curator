@@ -16,6 +16,19 @@ import {
 import { shouldExcludePaper } from '@/server/lib/rules';
 import type { Paper, PaperEnriched, UserProfile } from '@prisma/client';
 
+/**
+ * Scoring weights for multi-signal ranking algorithm
+ * These weights determine the relative importance of each signal
+ */
+const SCORE_WEIGHTS = {
+  NOVELTY: 0.2, // 20% - How different from user's interests
+  EVIDENCE: 0.25, // 25% - Quality indicators (baselines, ablations, code, etc.)
+  VELOCITY: 0.1, // 10% - Topic momentum
+  PERSONAL_FIT: 0.3, // 30% - Vector similarity + rule bonuses
+  LAB_PRIOR: 0.1, // 10% - Boosted labs
+  MATH_PENALTY: 0.05, // 5% - Penalty for math-heavy papers (subtracted)
+} as const;
+
 export interface RankingOptions {
   userProfile?: UserProfile | null;
 }
@@ -81,14 +94,19 @@ export async function rankPaper(
     const userEmbedding = userProfile.interestVector as number[];
     const paperEmbedding = paper.enriched.embedding as number[];
 
-    // TODO: Store and use user's historical keywords for better novelty detection
-    // For now, use empty array as placeholder
-    noveltyScore = calculateNoveltyScore({
-      paperEmbedding,
-      userCentroid: userEmbedding, // Use current interest vector as centroid
-      paperText,
-      userHistoricalKeywords: [], // Placeholder - need to track keyword history
-    });
+    // Guard: if interest vector is empty (cold-start), treat as moderately novel
+    if (userEmbedding.length === 0) {
+      noveltyScore = 0.5;
+    } else {
+      // TODO: Store and use user's historical keywords for better novelty detection
+      // For now, use empty array as placeholder
+      noveltyScore = calculateNoveltyScore({
+        paperEmbedding,
+        userCentroid: userEmbedding, // Use current interest vector as centroid
+        paperText,
+        userHistoricalKeywords: [], // Placeholder - need to track keyword history
+      });
+    }
   } else {
     // No user profile = treat as moderately novel
     noveltyScore = 0.5;
@@ -104,16 +122,22 @@ export async function rankPaper(
     const userEmbedding = userProfile.interestVector as number[];
     const paperEmbedding = paper.enriched.embedding as number[];
 
-    personalFitScore = calculatePersonalFitScore({
-      paperEmbedding,
-      userEmbedding,
-      paperTopics: paper.enriched.topics,
-      includedTopics: userProfile.includeTopics,
-      excludedTopics: userProfile.excludeTopics,
-      includedKeywords: userProfile.includeKeywords,
-      excludedKeywords: userProfile.excludeKeywords,
-      paperText,
-    });
+    // Guard: if interest vector is empty (cold-start), use only rule-based scoring
+    if (userEmbedding.length === 0) {
+      // Default similarity is 0, only rule bonuses apply
+      personalFitScore = 0;
+    } else {
+      personalFitScore = calculatePersonalFitScore({
+        paperEmbedding,
+        userEmbedding,
+        paperTopics: paper.enriched.topics,
+        includedTopics: userProfile.includeTopics,
+        excludedTopics: userProfile.excludeTopics,
+        includedKeywords: userProfile.includeKeywords,
+        excludedKeywords: userProfile.excludeKeywords,
+        paperText,
+      });
+    }
   }
 
   // Calculate Lab Prior score (L)
@@ -133,14 +157,13 @@ export async function rankPaper(
   }
 
   // Calculate final score using weighted formula
-  // Formula: 0.20×N + 0.25×E + 0.10×V + 0.30×P + 0.10×L - 0.05×M
   const finalScore =
-    0.2 * noveltyScore +
-    0.25 * evidenceScore +
-    0.1 * velocityScore +
-    0.3 * personalFitScore +
-    0.1 * labPriorScore -
-    0.05 * mathPenalty;
+    SCORE_WEIGHTS.NOVELTY * noveltyScore +
+    SCORE_WEIGHTS.EVIDENCE * evidenceScore +
+    SCORE_WEIGHTS.VELOCITY * velocityScore +
+    SCORE_WEIGHTS.PERSONAL_FIT * personalFitScore +
+    SCORE_WEIGHTS.LAB_PRIOR * labPriorScore -
+    SCORE_WEIGHTS.MATH_PENALTY * mathPenalty;
 
   // Clamp final score to [0, 1] range
   const clampedScore = Math.max(0, Math.min(1, finalScore));
@@ -265,8 +288,8 @@ export async function scoreUnrankedPapers(options: RankingOptions = {}) {
         none: {},
       },
     },
-    include: {
-      enriched: true,
+    select: {
+      id: true,
     },
   });
 
@@ -276,34 +299,7 @@ export async function scoreUnrankedPapers(options: RankingOptions = {}) {
     return [];
   }
 
-  // Score all papers
-  const scores = await Promise.all(
-    papers.map(async (paper) => {
-      try {
-        return await rankPaper(paper, options);
-      } catch (error) {
-        console.error(`[Ranker] Error scoring paper ${paper.arxivId}:`, error);
-        return null;
-      }
-    })
-  );
-
-  // Update status for scored papers
-  const scoredPaperIds = scores
-    .map((score, i) => (score ? papers[i].id : null))
-    .filter((id): id is string => id !== null);
-
-  if (scoredPaperIds.length > 0) {
-    await prisma.paper.updateMany({
-      where: { id: { in: scoredPaperIds } },
-      data: { status: 'ranked' },
-    });
-  }
-
-  const successCount = scores.filter((s) => s !== null).length;
-  console.log(
-    `[Ranker] Scored ${successCount}/${papers.length} unranked papers`
-  );
-
-  return scores;
+  // Use scorePapers to handle the actual scoring
+  const paperIds = papers.map((p) => p.id);
+  return await scorePapers(paperIds, options);
 }

@@ -471,7 +471,7 @@ describe('Ranker Agent', () => {
           status: 'enriched',
           scores: { none: {} },
         },
-        include: { enriched: true },
+        select: { id: true },
       });
 
       expect(scores).toHaveLength(1);

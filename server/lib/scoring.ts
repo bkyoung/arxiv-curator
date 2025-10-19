@@ -201,13 +201,14 @@ export function calculateNoveltyScore(input: NoveltyInput): number {
         // No historical keywords = treat all paper keywords as novel
         keywordNovelty = 1.0;
       } else {
-        // Check which paper keywords match any historical keyword
+        // Pre-process historical keywords for efficient matching
         const historicalKeywordsLower = input.userHistoricalKeywords.map((k) =>
           k.toLowerCase()
         );
 
         const novelKeywords = paperKeywords.filter((paperKeyword) => {
-          // Check if this paper keyword appears in any historical keyword
+          // Check if this paper keyword appears in any historical keyword (substring match)
+          // This allows fuzzy matching: "machine" matches "machine learning"
           return !historicalKeywordsLower.some((historicalKeyword) =>
             historicalKeyword.includes(paperKeyword)
           );

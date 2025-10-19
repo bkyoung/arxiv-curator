@@ -14,6 +14,41 @@ import {
   getFeedbackHistory,
 } from '@/server/lib/feedback';
 
+type FeedbackAction = 'save' | 'dismiss' | 'thumbs_up' | 'thumbs_down' | 'hide';
+
+/**
+ * Common handler for all feedback actions
+ * Consolidates duplicated logic from individual endpoints
+ */
+async function handleFeedback(
+  userId: string,
+  paperId: string,
+  action: FeedbackAction
+) {
+  // Record feedback
+  const feedback = await recordFeedback({
+    userId,
+    paperId,
+    action,
+  });
+
+  // Update user vector if paper has embedding
+  const paper = await prisma.paper.findUnique({
+    where: { id: paperId },
+    include: { enriched: true },
+  });
+
+  if (paper?.enriched?.embedding) {
+    await updateUserVectorFromFeedback({
+      userId,
+      paperEmbedding: paper.enriched.embedding as number[],
+      action,
+    });
+  }
+
+  return feedback;
+}
+
 export const feedbackRouter = router({
   /**
    * Record save feedback
@@ -25,30 +60,9 @@ export const feedbackRouter = router({
         paperId: z.string(),
       })
     )
-    .mutation(async ({ input }) => {
-      // Record feedback
-      const feedback = await recordFeedback({
-        userId: input.userId,
-        paperId: input.paperId,
-        action: 'save',
-      });
-
-      // Update user vector
-      const paper = await prisma.paper.findUnique({
-        where: { id: input.paperId },
-        include: { enriched: true },
-      });
-
-      if (paper?.enriched?.embedding) {
-        await updateUserVectorFromFeedback({
-          userId: input.userId,
-          paperEmbedding: paper.enriched.embedding as number[],
-          action: 'save',
-        });
-      }
-
-      return feedback;
-    }),
+    .mutation(async ({ input }) =>
+      handleFeedback(input.userId, input.paperId, 'save')
+    ),
 
   /**
    * Record dismiss feedback
@@ -60,30 +74,9 @@ export const feedbackRouter = router({
         paperId: z.string(),
       })
     )
-    .mutation(async ({ input }) => {
-      // Record feedback
-      const feedback = await recordFeedback({
-        userId: input.userId,
-        paperId: input.paperId,
-        action: 'dismiss',
-      });
-
-      // Update user vector
-      const paper = await prisma.paper.findUnique({
-        where: { id: input.paperId },
-        include: { enriched: true },
-      });
-
-      if (paper?.enriched?.embedding) {
-        await updateUserVectorFromFeedback({
-          userId: input.userId,
-          paperEmbedding: paper.enriched.embedding as number[],
-          action: 'dismiss',
-        });
-      }
-
-      return feedback;
-    }),
+    .mutation(async ({ input }) =>
+      handleFeedback(input.userId, input.paperId, 'dismiss')
+    ),
 
   /**
    * Record thumbs up feedback
@@ -95,30 +88,9 @@ export const feedbackRouter = router({
         paperId: z.string(),
       })
     )
-    .mutation(async ({ input }) => {
-      // Record feedback
-      const feedback = await recordFeedback({
-        userId: input.userId,
-        paperId: input.paperId,
-        action: 'thumbs_up',
-      });
-
-      // Update user vector
-      const paper = await prisma.paper.findUnique({
-        where: { id: input.paperId },
-        include: { enriched: true },
-      });
-
-      if (paper?.enriched?.embedding) {
-        await updateUserVectorFromFeedback({
-          userId: input.userId,
-          paperEmbedding: paper.enriched.embedding as number[],
-          action: 'thumbs_up',
-        });
-      }
-
-      return feedback;
-    }),
+    .mutation(async ({ input }) =>
+      handleFeedback(input.userId, input.paperId, 'thumbs_up')
+    ),
 
   /**
    * Record thumbs down feedback
@@ -130,30 +102,9 @@ export const feedbackRouter = router({
         paperId: z.string(),
       })
     )
-    .mutation(async ({ input }) => {
-      // Record feedback
-      const feedback = await recordFeedback({
-        userId: input.userId,
-        paperId: input.paperId,
-        action: 'thumbs_down',
-      });
-
-      // Update user vector
-      const paper = await prisma.paper.findUnique({
-        where: { id: input.paperId },
-        include: { enriched: true },
-      });
-
-      if (paper?.enriched?.embedding) {
-        await updateUserVectorFromFeedback({
-          userId: input.userId,
-          paperEmbedding: paper.enriched.embedding as number[],
-          action: 'thumbs_down',
-        });
-      }
-
-      return feedback;
-    }),
+    .mutation(async ({ input }) =>
+      handleFeedback(input.userId, input.paperId, 'thumbs_down')
+    ),
 
   /**
    * Record hide feedback
@@ -165,30 +116,9 @@ export const feedbackRouter = router({
         paperId: z.string(),
       })
     )
-    .mutation(async ({ input }) => {
-      // Record feedback
-      const feedback = await recordFeedback({
-        userId: input.userId,
-        paperId: input.paperId,
-        action: 'hide',
-      });
-
-      // Update user vector
-      const paper = await prisma.paper.findUnique({
-        where: { id: input.paperId },
-        include: { enriched: true },
-      });
-
-      if (paper?.enriched?.embedding) {
-        await updateUserVectorFromFeedback({
-          userId: input.userId,
-          paperEmbedding: paper.enriched.embedding as number[],
-          action: 'hide',
-        });
-      }
-
-      return feedback;
-    }),
+    .mutation(async ({ input }) =>
+      handleFeedback(input.userId, input.paperId, 'hide')
+    ),
 
   /**
    * Get feedback history for a user

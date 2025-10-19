@@ -96,9 +96,11 @@ export const papersRouter = router({
    * Get paper statistics
    */
   stats: publicProcedure.query(async () => {
-    const [total, enriched, byCategory] = await Promise.all([
+    const [total, pending, enriched, ranked, byCategory] = await Promise.all([
       prisma.paper.count(),
+      prisma.paper.count({ where: { status: 'pending' } }),
       prisma.paper.count({ where: { status: 'enriched' } }),
+      prisma.paper.count({ where: { status: 'ranked' } }),
       prisma.paper.groupBy({
         by: ['primaryCategory'],
         _count: true,
@@ -113,8 +115,9 @@ export const papersRouter = router({
 
     return {
       total,
+      pending,
       enriched,
-      pending: total - enriched,
+      ranked,
       topCategories: byCategory.map((cat) => ({
         category: cat.primaryCategory,
         count: cat._count,

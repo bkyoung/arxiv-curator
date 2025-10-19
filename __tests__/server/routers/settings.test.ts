@@ -35,6 +35,15 @@ vi.mock('@/server/db', () => ({
         return profiles[0] || null;
       }),
 
+      findUnique: vi.fn(async ({ where }) => {
+        // Support both userId and id lookups
+        if (where.userId) {
+          const profiles = Array.from(mockPrismaProfiles.values());
+          return profiles.find((p) => p.userId === where.userId) || null;
+        }
+        return mockPrismaProfiles.get(where.id) || null;
+      }),
+
       create: vi.fn(async ({ data }) => {
         const profile = {
           id: `profile-${mockPrismaProfiles.size + 1}`,
@@ -139,15 +148,12 @@ describe('Settings Router (Mocked)', () => {
       expect(result.useLocalEmbeddings).toBe(true);
     });
 
-    it('should return default profile if none exists', async () => {
+    it('should throw error if profile does not exist', async () => {
       const caller = settingsRouter.createCaller({ req: {}, res: {} } as any);
-      const result = await caller.getProfile();
 
-      expect(result.id).toBe('default');
-      expect(result.userId).toBe('default');
-      expect(result.arxivCategories).toEqual(['cs.AI', 'cs.CL', 'cs.LG']);
-      expect(result.useLocalEmbeddings).toBe(true);
-      expect(result.useLocalLLM).toBe(true);
+      await expect(caller.getProfile()).rejects.toThrow(
+        'User profile not found'
+      );
     });
   });
 
@@ -175,16 +181,14 @@ describe('Settings Router (Mocked)', () => {
       expect(result.updatedAt).toBeInstanceOf(Date);
     });
 
-    it('should create new profile if none exists', async () => {
+    it('should throw error if profile does not exist', async () => {
       const caller = settingsRouter.createCaller({ req: {}, res: {} } as any);
-      const result = await caller.updateCategories({
-        categories: ['cs.AI', 'cs.LG'],
-      });
 
-      expect(result.id).toBeDefined();
-      expect(result.userId).toBe('default');
-      expect(result.arxivCategories).toEqual(['cs.AI', 'cs.LG']);
-      expect(result.sourcesEnabled).toEqual(['arxiv']);
+      await expect(
+        caller.updateCategories({
+          categories: ['cs.AI', 'cs.LG'],
+        })
+      ).rejects.toThrow('User profile not found');
     });
   });
 
@@ -214,18 +218,15 @@ describe('Settings Router (Mocked)', () => {
       expect(result.updatedAt).toBeInstanceOf(Date);
     });
 
-    it('should create new profile with processing preferences if none exists', async () => {
+    it('should throw error if profile does not exist', async () => {
       const caller = settingsRouter.createCaller({ req: {}, res: {} } as any);
-      const result = await caller.updateProcessing({
-        useLocalEmbeddings: false,
-        useLocalLLM: true,
-      });
 
-      expect(result.id).toBeDefined();
-      expect(result.userId).toBe('default');
-      expect(result.useLocalEmbeddings).toBe(false);
-      expect(result.useLocalLLM).toBe(true);
-      expect(result.arxivCategories).toEqual(['cs.AI', 'cs.CL', 'cs.LG']);
+      await expect(
+        caller.updateProcessing({
+          useLocalEmbeddings: false,
+          useLocalLLM: true,
+        })
+      ).rejects.toThrow('User profile not found');
     });
   });
 });

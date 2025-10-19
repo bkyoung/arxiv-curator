@@ -8,6 +8,24 @@ import { router, publicProcedure } from '@/server/trpc';
 import { prisma } from '@/server/db';
 import { z } from 'zod';
 
+/**
+ * Get the current user profile for single-user system
+ *
+ * This helper encapsulates the single-user logic and makes it easy to
+ * migrate to multi-user support later by updating this function to
+ * accept a userId parameter.
+ *
+ * @returns Current user profile or null if not found
+ */
+async function getCurrentUserProfile() {
+  // For single-user system, use 'user-1' (created by seed script)
+  const profile = await prisma.userProfile.findUnique({
+    where: { userId: 'user-1' },
+  });
+
+  return profile;
+}
+
 export const settingsRouter = router({
   /**
    * Get all arXiv categories
@@ -29,41 +47,17 @@ export const settingsRouter = router({
 
   /**
    * Get user profile settings
-   *
-   * For Phase 1, we'll use a default/global profile
-   * Phase 2+ will add user-specific profiles
    */
   getProfile: publicProcedure.query(async () => {
-    // Try to find existing profile or return defaults
-    const profile = await prisma.userProfile.findFirst();
+    const profile = await getCurrentUserProfile();
 
-    if (profile) {
-      return profile;
+    if (!profile) {
+      throw new Error(
+        'User profile not found. Please run database seed: npx prisma db seed'
+      );
     }
 
-    // Return default configuration matching UserProfile schema
-    return {
-      id: 'default',
-      userId: 'default',
-      arxivCategories: ['cs.AI', 'cs.CL', 'cs.LG'],
-      sourcesEnabled: ['arxiv'],
-      useLocalEmbeddings: true,
-      useLocalLLM: true,
-      preferredLLM: 'gemini-2.0-flash',
-      noiseCap: 50,
-      targetToday: 15,
-      target7d: 100,
-      includeTopics: [],
-      excludeTopics: [],
-      includeKeywords: [],
-      excludeKeywords: [],
-      mathDepthMax: 0.5,
-      explorationRate: 0.15,
-      labBoosts: {},
-      interestVector: [],
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    return profile;
   }),
 
   /**
@@ -72,28 +66,19 @@ export const settingsRouter = router({
   updateCategories: publicProcedure
     .input(z.object({ categories: z.array(z.string()) }))
     .mutation(async ({ input }) => {
-      // For Phase 1, update or create a single global profile
-      const existing = await prisma.userProfile.findFirst();
+      const existing = await getCurrentUserProfile();
 
-      if (existing) {
-        return await prisma.userProfile.update({
-          where: { id: existing.id },
-          data: {
-            arxivCategories: input.categories,
-            updatedAt: new Date(),
-          },
-        });
-      } else {
-        return await prisma.userProfile.create({
-          data: {
-            userId: 'default',
-            arxivCategories: input.categories,
-            sourcesEnabled: ['arxiv'],
-            useLocalEmbeddings: true,
-            useLocalLLM: true,
-          },
-        });
+      if (!existing) {
+        throw new Error('User profile not found');
       }
+
+      return await prisma.userProfile.update({
+        where: { id: existing.id },
+        data: {
+          arxivCategories: input.categories,
+          updatedAt: new Date(),
+        },
+      });
     }),
 
   /**
@@ -107,28 +92,20 @@ export const settingsRouter = router({
       })
     )
     .mutation(async ({ input }) => {
-      const existing = await prisma.userProfile.findFirst();
+      const existing = await getCurrentUserProfile();
 
-      if (existing) {
-        return await prisma.userProfile.update({
-          where: { id: existing.id },
-          data: {
-            useLocalEmbeddings: input.useLocalEmbeddings,
-            useLocalLLM: input.useLocalLLM,
-            updatedAt: new Date(),
-          },
-        });
-      } else {
-        return await prisma.userProfile.create({
-          data: {
-            userId: 'default',
-            arxivCategories: ['cs.AI', 'cs.CL', 'cs.LG'],
-            sourcesEnabled: ['arxiv'],
-            useLocalEmbeddings: input.useLocalEmbeddings,
-            useLocalLLM: input.useLocalLLM,
-          },
-        });
+      if (!existing) {
+        throw new Error('User profile not found');
       }
+
+      return await prisma.userProfile.update({
+        where: { id: existing.id },
+        data: {
+          useLocalEmbeddings: input.useLocalEmbeddings,
+          useLocalLLM: input.useLocalLLM,
+          updatedAt: new Date(),
+        },
+      });
     }),
 
   /**
@@ -144,7 +121,7 @@ export const settingsRouter = router({
       })
     )
     .mutation(async ({ input }) => {
-      const existing = await prisma.userProfile.findFirst();
+      const existing = await getCurrentUserProfile();
 
       if (!existing) {
         throw new Error('User profile not found');
@@ -172,7 +149,7 @@ export const settingsRouter = router({
       })
     )
     .mutation(async ({ input }) => {
-      const existing = await prisma.userProfile.findFirst();
+      const existing = await getCurrentUserProfile();
 
       if (!existing) {
         throw new Error('User profile not found');
@@ -197,7 +174,7 @@ export const settingsRouter = router({
       })
     )
     .mutation(async ({ input }) => {
-      const existing = await prisma.userProfile.findFirst();
+      const existing = await getCurrentUserProfile();
 
       if (!existing) {
         throw new Error('User profile not found');
@@ -222,7 +199,7 @@ export const settingsRouter = router({
       })
     )
     .mutation(async ({ input }) => {
-      const existing = await prisma.userProfile.findFirst();
+      const existing = await getCurrentUserProfile();
 
       if (!existing) {
         throw new Error('User profile not found');

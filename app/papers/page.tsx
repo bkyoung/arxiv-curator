@@ -37,7 +37,7 @@ export default function PapersPage() {
   const { data: papersData, isLoading, refetch } = trpc.papers.list.useQuery({
     limit: ITEMS_PER_PAGE,
     offset: page * ITEMS_PER_PAGE,
-    status: 'enriched', // Only show enriched papers
+    // Don't filter by status - show both enriched and ranked papers
   });
 
   // Fetch stats
@@ -101,12 +101,16 @@ export default function PapersPage() {
                   <span className="font-medium">{stats.total}</span>
                 </div>
                 <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Pending:</span>
+                  <span className="font-medium">{stats.pending}</span>
+                </div>
+                <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Enriched:</span>
                   <span className="font-medium">{stats.enriched}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Pending:</span>
-                  <span className="font-medium">{stats.pending}</span>
+                  <span className="text-muted-foreground">Ranked:</span>
+                  <span className="font-medium">{stats.ranked}</span>
                 </div>
               </CardContent>
             </Card>

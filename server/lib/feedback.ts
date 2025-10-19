@@ -80,6 +80,34 @@ export async function updateUserVectorFromFeedback(input: UpdateVectorInput) {
   const isPositive =
     input.action === 'save' || input.action === 'thumbs_up';
 
+  // Cold-start: if vector is empty, initialize with paper embedding
+  if (currentVector.length === 0) {
+    // For first feedback, use paper embedding directly if positive
+    // or inverted if negative
+    const initialVector = isPositive
+      ? paperEmbedding
+      : paperEmbedding.map((val) => -val);
+
+    // Normalize the initial vector
+    const magnitude = Math.sqrt(
+      initialVector.reduce((sum, val) => sum + val * val, 0)
+    );
+
+    const normalizedVector =
+      magnitude > 0
+        ? initialVector.map((val) => val / magnitude)
+        : initialVector;
+
+    const updatedProfile = await prisma.userProfile.update({
+      where: { userId: input.userId },
+      data: {
+        interestVector: normalizedVector,
+      },
+    });
+
+    return updatedProfile;
+  }
+
   // EMA constants
   const alpha = 0.1; // Learning rate
   const beta = 1 - alpha; // Memory retention (0.9)

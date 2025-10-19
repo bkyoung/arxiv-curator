@@ -305,7 +305,7 @@ describe('Papers Router (Mocked)', () => {
 
       mockPrismaPapers.set('paper-3', {
         id: 'paper-3',
-        status: 'new',
+        status: 'pending',
         primaryCategory: 'cs.LG',
       } as any);
 
@@ -313,8 +313,9 @@ describe('Papers Router (Mocked)', () => {
       const result = await caller.stats();
 
       expect(result.total).toBe(3);
-      expect(result.enriched).toBe(2);
       expect(result.pending).toBe(1);
+      expect(result.enriched).toBe(2);
+      expect(result.ranked).toBe(0);
       expect(result.topCategories).toHaveLength(2);
       expect(result.topCategories[0].category).toBe('cs.AI');
       expect(result.topCategories[0].count).toBe(2);
