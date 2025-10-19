@@ -1312,3 +1312,122 @@ ollama pull llama3.2      # Classification LLM
 ---
 
 **End of Phase 1 Technical Design**
+
+---
+
+## 10. UI Guidelines
+
+### 10.1 Technology Stack
+
+- **Framework**: React 19 with Next.js 15 App Router
+- **Styling**: Tailwind CSS 4
+- **Components**: shadcn/ui (Radix UI primitives)
+- **Icons**: Lucide React
+
+### 10.2 Design Principles
+
+**Simple, Functional, Professional**
+- Prefer clarity and usability over visual effects
+- Avoid heavy animations, glassmorphic effects, or overly decorative elements
+- Focus on information density and clean typography
+- Use consistent spacing and a clear hierarchy
+
+**Component Usage**
+- Always use shadcn components when an appropriate one exists
+- Do not reinvent components that shadcn provides (Button, Card, Badge, Table, etc.)
+- Use appropriate Lucide icons for visual hierarchy and context
+
+**Color & Contrast**
+- Use Tailwind's neutral color palette by default
+- Ensure WCAG AA contrast compliance
+- Use color purposefully (status indicators, CTAs, warnings)
+
+### 10.3 Key Components
+
+**shadcn Components Used**:
+- `Card`, `CardHeader`, `CardTitle`, `CardContent`, `CardDescription` - Content containers
+- `Button` - All interactive buttons
+- `Badge` - Tags, categories, status indicators
+- `Checkbox` - Settings toggles, multi-select
+- `Label` - Form labels
+- `Table` - Data tables (future use)
+- `Separator` - Visual dividers
+- `Select` - Dropdowns (future use)
+
+**Lucide Icons Used**:
+- `FileText` - Papers, documents
+- `Settings2` - Configuration
+- `Activity` - System status
+- `Database` - Data sources
+- `Cpu` - Processing
+- `Calendar` - Dates
+- `Users` - Authors
+- `Tag` - Categories
+- `ExternalLink` - External links
+- `CheckCircle2` - Success states
+- `Loader2` - Loading states (animated)
+- `ChevronLeft`, `ChevronRight` - Navigation
+- `BarChart3` - Statistics
+
+### 10.4 Page Layouts
+
+**Standard Layout Pattern**:
+```tsx
+<div className="container mx-auto py-8 px-4 max-w-{size}">
+  {/* Header */}
+  <div className="mb-8">
+    <div className="flex items-center gap-3 mb-2">
+      <Icon className="h-8 w-8" />
+      <h1 className="text-3xl font-bold">Page Title</h1>
+    </div>
+    <p className="text-muted-foreground">Description</p>
+  </div>
+
+  {/* Content */}
+  <div className="space-y-6">
+    <Card>...</Card>
+  </div>
+</div>
+```
+
+**Responsive Breakpoints**:
+- Mobile-first approach
+- Use Tailwind's `sm:`, `md:`, `lg:` breakpoints
+- Grid layouts: `grid gap-4 md:grid-cols-2`
+
+### 10.5 States & Feedback
+
+**Loading States**:
+```tsx
+{isLoading && (
+  <div className="flex items-center gap-2">
+    <Loader2 className="h-4 w-4 animate-spin" />
+    Loading...
+  </div>
+)}
+```
+
+**Empty States**:
+```tsx
+<Card>
+  <CardContent className="py-12">
+    <div className="text-center">
+      <Icon className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+      <h3 className="text-lg font-medium mb-2">No items found</h3>
+      <p className="text-sm text-muted-foreground mb-4">Description</p>
+      <Button>Action</Button>
+    </div>
+  </CardContent>
+</Card>
+```
+
+**Success/Error States**:
+```tsx
+{success && (
+  <div className="flex items-center gap-2 text-green-600">
+    <CheckCircle2 className="h-4 w-4" />
+    Success message
+  </div>
+)}
+```
+
