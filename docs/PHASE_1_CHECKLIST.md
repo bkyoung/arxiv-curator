@@ -167,24 +167,38 @@ Phase 1 implements the data pipeline that feeds all downstream features. Papers 
 
 ### 7. Testing
 
-- [ ] **Unit Tests**
+- [ ] **Unit Tests (All External Services Mocked)**
   - [ ] Scout Agent: category fetching, Atom parsing, rate limiting
+    - [ ] Mock fetch for arXiv API calls
+    - [ ] Mock Prisma for database operations
+    - [ ] Use realistic XML response snapshots
   - [ ] Enricher Agent: embedding generation, math depth, evidence detection
+    - [ ] Mock ollama API calls
+    - [ ] Mock Prisma for database operations
+    - [ ] Use realistic embedding vectors
   - [ ] Classification: topic/facet tagging
+    - [ ] Mock LLM API calls
+    - [ ] Use realistic classification responses
   - [ ] Test coverage >= 80%
+  - [ ] All tests fast (<100ms each)
+  - [ ] No external service dependencies
 
-- [ ] **Integration Tests**
-  - [ ] End-to-end: Scout → Enrich pipeline
-  - [ ] Job queue processing
+- [ ] **Integration Tests (Real Services)**
+  - [ ] End-to-end: Scout → Enrich pipeline with real database
+  - [ ] Real arXiv API integration (rate-limited)
+  - [ ] Real ollama integration (skip if unavailable)
+  - [ ] Job queue processing with pg-boss
   - [ ] Settings persistence
   - [ ] Paper list retrieval
 
 - [ ] **Manual Testing**
-  - [ ] Run Scout Agent manually
+  - [ ] Run Scout Agent manually with real arXiv API
   - [ ] Verify papers appear in database
-  - [ ] Check embeddings are stored
+  - [ ] Check embeddings are stored (if ollama available)
   - [ ] Verify Settings UI works
   - [ ] Browse papers in UI
+
+**Testing Philosophy**: Unit tests use mocks for all external services (database, APIs, LLMs) to ensure fast, deterministic, and reliable tests. Integration tests validate real-world behavior with actual services.
 
 ---
 

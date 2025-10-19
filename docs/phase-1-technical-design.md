@@ -1048,28 +1048,62 @@ export default function PapersPage() {
 
 ## 8. Testing Strategy
 
-### 8.1 Unit Tests
+### 8.1 Testing Philosophy
+
+**Unit Tests: Mock All External Services**
+
+All unit tests must use mocks for external dependencies:
+- **Database (Prisma)**: Mock all database operations using in-memory implementations
+- **External APIs**: Mock all HTTP requests (arXiv, ollama, cloud APIs)
+- **LLMs**: Mock LLM responses with realistic snapshots of actual data
+- **Embeddings**: Mock embedding generation with representative vectors
+
+**Integration Tests: Real Services**
+
+Integration tests (separate suite) will use actual services:
+- Real PostgreSQL database (test environment)
+- Real arXiv API (rate-limited, small datasets)
+- Real ollama (if available, otherwise skip)
+- End-to-end pipeline validation
+
+**Rationale**: Unit tests should be fast, deterministic, and not fail due to external service issues. Integration tests validate real-world behavior.
+
+### 8.2 Mock Data Strategy
+
+All mock data must be **realistic snapshots** of actual responses:
+- arXiv XML responses: Real structure from actual API calls
+- LLM outputs: Actual formatted responses from ollama/Gemini
+- Database records: Representative of production data
+
+Mock data location: `__tests__/mocks/`
+
+### 8.3 Unit Tests
 
 **Scout Agent Tests**: `__tests__/server/agents/scout.test.ts`
 
 ```typescript
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { fetchArxivCategories, ingestRecentPapers } from '@/server/agents/scout';
+import { describe, it, expect, vi } from 'vitest';
+import { fetchArxivCategories } from '@/server/agents/scout';
+import { mockOAIPMHCategoriesResponse } from '../mocks/arxiv-responses';
+
+// Mock fetch
+global.fetch = vi.fn();
+
+// Mock Prisma
+vi.mock('@/server/db', () => ({
+  prisma: mockPrisma,
+}));
 
 describe('Scout Agent', () => {
-  it('should fetch arXiv categories', async () => {
+  it('should fetch and parse arXiv categories', async () => {
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      text: async () => mockOAIPMHCategoriesResponse,
+    });
+
     const categories = await fetchArxivCategories();
-    expect(categories.length).toBeGreaterThan(0);
-    expect(categories[0]).toHaveProperty('id');
-    expect(categories[0]).toHaveProperty('name');
-  });
-
-  it('should parse arXiv ID correctly', async () => {
-    // Test ID parsing logic
-  });
-
-  it('should handle version supersedence', async () => {
-    // Test version upgrade flow
+    expect(categories.length).toBe(4); // cs.*, not math.*
+    expect(categories[0].id).toBe('cs');
   });
 });
 ```

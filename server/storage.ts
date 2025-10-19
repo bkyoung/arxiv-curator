@@ -2,11 +2,13 @@ import { S3Client, HeadBucketCommand } from '@aws-sdk/client-s3';
 import { env } from './env';
 
 /**
- * Validate storage credentials are not using insecure defaults in production
+ * Validate storage credentials at runtime (not during build)
  */
-if (env.NODE_ENV === 'production') {
-  if (env.MINIO_ACCESS_KEY === 'minioadmin' || env.MINIO_SECRET_KEY === 'minioadmin') {
-    throw new Error('Insecure MinIO credentials detected in production. Please set MINIO_ACCESS_KEY and MINIO_SECRET_KEY.');
+function validateCredentials() {
+  if (env.NODE_ENV === 'production') {
+    if (env.MINIO_ACCESS_KEY === 'minioadmin' || env.MINIO_SECRET_KEY === 'minioadmin') {
+      throw new Error('Insecure MinIO credentials detected in production. Please set MINIO_ACCESS_KEY and MINIO_SECRET_KEY.');
+    }
   }
 }
 
@@ -28,6 +30,7 @@ export const BUCKET_NAME = env.MINIO_BUCKET;
  * Validates storage connection by checking if bucket exists
  */
 export async function validateStorageConnection(): Promise<boolean> {
+  validateCredentials(); // Check credentials at runtime
   try {
     await s3Client.send(new HeadBucketCommand({ Bucket: BUCKET_NAME }));
     return true;
