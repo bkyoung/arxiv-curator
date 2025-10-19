@@ -1,0 +1,390 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===========================
+// Auth.js v5 (NextAuth.js v5) Models
+// ===========================
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts  Account[]
+  sessions  Session[]
+  profile   UserProfile?
+  feedback  Feedback[]
+  analyses  Analysis[]
+  notebooks Notebook[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ===========================
+// User Profile & Preferences
+// ===========================
+
+model UserProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+
+  // Personalization (learned preferences)
+  interestVector  Json     @default("[]") // 768-dim embedding for user interests
+  includeTopics   String[] @default([]) // Topics to boost
+  excludeTopics   String[] @default([]) // Topics to filter out
+  includeKeywords String[] @default([]) // Keywords to boost
+  excludeKeywords String[] @default([]) // Keywords to filter out
+  labBoosts       Json     @default("{}") // Lab preferences: { "DeepMind": 0.05 }
+
+  // Preferences
+  mathDepthMax    Float @default(1.0) // 0.0-1.0 tolerance for math-heavy papers
+  explorationRate Float @default(0.15) // 15% exploration picks
+  noiseCap        Int   @default(50) // Max papers per day
+  targetToday     Int   @default(15) // Target digest size (today)
+  target7d        Int   @default(100) // Target digest size (7 days)
+
+  // Sources
+  arxivCategories String[] @default(["cs.AI", "cs.LG", "cs.CV", "cs.CL"])
+  sourcesEnabled  Json     @default("{\"arxiv\": true, \"openAlex\": false, \"semanticScholar\": false}")
+
+  // AI Model Preferences
+  useLocalEmbeddings Boolean @default(true)
+  useLocalLLM        Boolean @default(true)
+  preferredLLM       String  @default("gemini-2.0-flash")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ===========================
+// Papers
+// ===========================
+
+model Paper {
+  id String @id @default(cuid())
+
+  // arXiv identifiers
+  arxivId String @unique
+  version Int    @default(1)
+
+  // Core metadata
+  title    String
+  authors  String[]
+  abstract String   @db.Text
+
+  // arXiv-specific
+  categories      String[]
+  primaryCategory String
+
+  // URLs
+  pdfUrl  String?
+  codeUrl String?
+
+  // Dates
+  pubDate     DateTime
+  updatedDate DateTime
+
+  // Raw metadata (full arXiv response for reference)
+  rawMetadata Json?
+
+  // Processing status
+  status String @default("pending") // pending, enriched, failed
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  enriched      PaperEnriched?
+  scores        Score[]
+  feedback      Feedback[]
+  summaries     Summary[]
+  analyses      Analysis[]
+  notebookItems NotebookItem[]
+
+  @@index([arxivId, version])
+  @@index([pubDate])
+  @@index([status])
+  @@index([primaryCategory])
+}
+
+model PaperEnriched {
+  id      String @id @default(cuid())
+  paperId String @unique
+
+  // Computed features
+  topics    String[]
+  facets    String[]
+  embedding Json     @default("[]") // 768-dim vector as JSON array
+
+  // Signals
+  mathDepth        Float   @default(0.0) // 0.0-1.0 estimate of mathematical complexity
+  hasCode          Boolean @default(false)
+  hasData          Boolean @default(false)
+  hasBaselines     Boolean @default(false)
+  hasAblations     Boolean @default(false)
+  hasMultipleEvals Boolean @default(false)
+
+  enrichedAt DateTime @default(now())
+
+  paper Paper @relation(fields: [paperId], references: [id], onDelete: Cascade)
+
+  @@index([paperId])
+}
+
+// ===========================
+// Scoring & Feedback
+// ===========================
+
+model Score {
+  id      String @id @default(cuid())
+  paperId String
+
+  // Signal components (0.0-1.0 each)
+  novelty     Float @default(0.0)
+  evidence    Float @default(0.0)
+  velocity    Float @default(0.0)
+  personalFit Float @default(0.0)
+  labPrior    Float @default(0.0) // 0.0-0.05 range
+  mathPenalty Float @default(0.0) // 0.0-0.3 range (subtracted)
+
+  // Final score
+  finalScore Float @default(0.0)
+
+  // Feature attribution for "Why Shown" (JSON)
+  whyShown Json? // { "novelty": 0.28, "evidence": 0.30, ... }
+
+  createdAt DateTime @default(now())
+
+  paper Paper @relation(fields: [paperId], references: [id], onDelete: Cascade)
+
+  @@index([paperId])
+  @@index([finalScore])
+}
+
+model Feedback {
+  id      String @id @default(cuid())
+  userId  String
+  paperId String
+
+  // Feedback type
+  action  String // "save", "dismiss", "thumbs_up", "thumbs_down", "hide"
+  weight  Float  @default(1.0) // Weight for learning
+  context String? // Optional context
+
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  paper Paper @relation(fields: [paperId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, paperId, action])
+  @@index([userId])
+  @@index([paperId])
+  @@index([createdAt])
+}
+
+// ===========================
+// Summaries (Phase 4)
+// ===========================
+
+model Summary {
+  id      String @id @default(cuid())
+  paperId String
+
+  summaryType     String // "skim", "medium", "deep"
+  whatsNew        String
+  keyPoints       String[]
+  markdownContent String   @db.Text
+
+  generatedAt DateTime @default(now())
+
+  paper Paper @relation(fields: [paperId], references: [id], onDelete: Cascade)
+
+  @@index([paperId, summaryType])
+}
+
+// ===========================
+// Analysis (Phase 5)
+// ===========================
+
+model Analysis {
+  id      String @id @default(cuid())
+  paperId String
+  userId  String
+
+  depth String // "A", "B", "C"
+
+  claimsEvidence     String  @db.Text
+  limitations        String[]
+  neighborComparison Json? // Only for Depth B
+  verdict            String  @db.Text
+  confidence         Float
+  markdownContent    String  @db.Text
+
+  generatedAt DateTime @default(now())
+
+  paper Paper @relation(fields: [paperId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([paperId, userId, depth])
+}
+
+// ===========================
+// Collections (Phase 6)
+// ===========================
+
+model Notebook {
+  id String @id @default(cuid())
+  userId String
+
+  title        String
+  description  String?
+  purpose      String? // "survey", "experiment", "writeup"
+  isContinuous Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     NotebookItem[]
+  synthesis NotebookSynthesis?
+
+  @@index([userId])
+}
+
+model NotebookItem {
+  id         String   @id @default(cuid())
+  notebookId String
+  paperId    String
+  userNotes  String?
+  tags       String[]
+  addedAt    DateTime @default(now())
+
+  notebook Notebook @relation(fields: [notebookId], references: [id], onDelete: Cascade)
+  paper    Paper    @relation(fields: [paperId], references: [id], onDelete: Cascade)
+
+  @@unique([notebookId, paperId])
+}
+
+model NotebookSynthesis {
+  id              String   @id @default(cuid())
+  notebookId      String   @unique
+  markdownContent String   @db.Text
+  generatedAt     DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  notebook Notebook @relation(fields: [notebookId], references: [id], onDelete: Cascade)
+}
+
+// ===========================
+// Trends & Analytics (Phase 7)
+// ===========================
+
+model TopicVelocity {
+  id   String   @id @default(cuid())
+  topic String
+  date DateTime
+
+  count      Int
+  velocity   Float // EMA slope
+  growthRate Float // WoW growth
+
+  @@unique([topic, date])
+  @@index([topic, date])
+}
+
+model TechniqueCooccurrence {
+  id        String @id @default(cuid())
+  technique1 String
+  technique2 String
+  cooccurrenceCount Int
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([technique1, technique2])
+}
+
+// ===========================
+// Briefings (Phase 3)
+// ===========================
+
+model Briefing {
+  id String @id @default(cuid())
+  userId String
+
+  window       String   // "today", "7d", "custom"
+  briefingDate DateTime
+  topPaperIds  String[] // Array of paper IDs
+  trendSummary Json? // Optional trend summary
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, briefingDate])
+}
+
+// ===========================
+// arXiv Category Taxonomy
+// ===========================
+
+model ArxivCategory {
+  id String @id // e.g., "cs.AI"
+
+  name        String
+  description String
+  updatedAt   DateTime @updatedAt
+
+  @@index([id])
+}
