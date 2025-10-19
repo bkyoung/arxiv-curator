@@ -9,7 +9,7 @@
  *
  * @param text - Text to embed
  * @param useLocal - Use local embeddings (default: true)
- * @returns 768-dimensional embedding as JSON array
+ * @returns 384-dimensional embedding as JSON array (all-minilm model)
  */
 export async function generateEmbedding(
   text: string,
@@ -26,7 +26,7 @@ export async function generateEmbedding(
  * Generate embedding using local ollama
  *
  * @param text - Text to embed
- * @returns 768-dimensional embedding
+ * @returns 384-dimensional embedding (all-minilm model)
  */
 async function generateLocalEmbedding(text: string): Promise<number[]> {
   const ollamaUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
@@ -59,7 +59,7 @@ async function generateLocalEmbedding(text: string): Promise<number[]> {
  * Generate embedding using cloud API
  *
  * @param text - Text to embed
- * @returns 768-dimensional embedding
+ * @returns 384-dimensional embedding (matching local model dimension)
  */
 async function generateCloudEmbedding(text: string): Promise<number[]> {
   // Placeholder for cloud embeddings

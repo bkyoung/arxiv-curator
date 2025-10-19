@@ -60,8 +60,6 @@ export function estimateMathDepth(title: string, abstract: string): number {
  * @returns Evidence signals object
  */
 export function detectEvidenceSignals(abstract: string): EvidenceSignals {
-  const lowerAbstract = abstract.toLowerCase();
-
   return {
     hasCode: /github|code available|open.?source/i.test(abstract),
     hasData: /dataset|data available/i.test(abstract),

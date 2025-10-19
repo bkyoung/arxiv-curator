@@ -89,6 +89,11 @@ describe('Enricher Agent', () => {
     let testPaper: any;
 
     beforeEach(async () => {
+      // Clean up any existing test paper first (in case previous test failed)
+      await prisma.paper.deleteMany({
+        where: { arxivId: '2401.TEST01' },
+      });
+
       // Create a test paper
       testPaper = await prisma.paper.create({
         data: {

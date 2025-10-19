@@ -56,5 +56,5 @@ arxivLimiter.on('dropped', (dropped) => {
  * Log rate limiter statistics
  */
 arxivLimiter.on('done', () => {
-  console.log(`[Rate Limiter] Job completed in undefinedms`);
+  console.log(`[Rate Limiter] Job completed`);
 });
