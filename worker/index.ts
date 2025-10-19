@@ -1,0 +1,124 @@
+/**
+ * Worker Process
+ *
+ * Processes background jobs for paper ingestion and enrichment
+ */
+
+import { startQueue, boss } from '@/server/queue';
+import { scoutEnrichWorkflow } from './workflows/scout-enrich';
+import { enrichPaper } from '@/server/agents/enricher';
+import { prisma } from '@/server/db';
+
+/**
+ * Job data interfaces
+ */
+interface ScoutPapersJob {
+  categories: string[];
+  maxResults: number;
+}
+
+interface EnrichPaperJob {
+  paperId: string;
+  useLocalEmbeddings?: boolean;
+  useLocalLLM?: boolean;
+}
+
+/**
+ * Main worker process
+ */
+async function main() {
+  console.log('[Worker] Starting worker process...');
+
+  try {
+    // Start pg-boss queue
+    await startQueue();
+    console.log('[Worker] Queue started');
+
+    // Register job handler: scout-papers
+    await boss.work<ScoutPapersJob>('scout-papers', async (jobs) => {
+      // pg-boss work handler can receive array of jobs
+      const jobArray = Array.isArray(jobs) ? jobs : [jobs];
+
+      for (const job of jobArray) {
+        const jobId = (job as any).id || 'unknown';
+        const { categories, maxResults } = job.data;
+
+        console.log(`[Worker] Processing scout-papers job ${jobId}`);
+        console.log(`[Worker] Categories: ${categories.join(', ')}`);
+        console.log(`[Worker] Max results: ${maxResults}`);
+
+        try {
+          const result = await scoutEnrichWorkflow(categories, maxResults);
+
+          console.log(`[Worker] Job ${jobId} completed`);
+          console.log(`[Worker] Scouted ${result.paperIds.length} papers`);
+          console.log(`[Worker] Enriched ${result.enrichedCount} papers`);
+        } catch (error) {
+          console.error(`[Worker] Job ${jobId} failed:`, error);
+          throw error;
+        }
+      }
+
+      return { success: true };
+    });
+
+    // Register job handler: enrich-paper
+    await boss.work<EnrichPaperJob>('enrich-paper', async (jobs) => {
+      // pg-boss work handler can receive array of jobs
+      const jobArray = Array.isArray(jobs) ? jobs : [jobs];
+
+      for (const job of jobArray) {
+        const jobId = (job as any).id || 'unknown';
+        const { paperId, useLocalEmbeddings = true, useLocalLLM = true } = job.data;
+
+        console.log(`[Worker] Processing enrich-paper job ${jobId}`);
+        console.log(`[Worker] Paper ID: ${paperId}`);
+
+        try {
+          const paper = await prisma.paper.findUnique({ where: { id: paperId } });
+          if (!paper) {
+            throw new Error(`Paper ${paperId} not found`);
+          }
+
+          await enrichPaper(paper, useLocalEmbeddings, useLocalLLM);
+
+          console.log(`[Worker] Job ${jobId} completed`);
+          console.log(`[Worker] Paper ${paperId} enriched`);
+        } catch (error) {
+          console.error(`[Worker] Job ${jobId} failed:`, error);
+          throw error;
+        }
+      }
+
+      return { success: true };
+    });
+
+    console.log('[Worker] Ready. Waiting for jobs...');
+
+    // Keep process running
+    process.on('SIGINT', async () => {
+      console.log('[Worker] Shutting down...');
+      await boss.stop();
+      process.exit(0);
+    });
+
+    process.on('SIGTERM', async () => {
+      console.log('[Worker] Shutting down...');
+      await boss.stop();
+      process.exit(0);
+    });
+  } catch (error) {
+    console.error('[Worker] Fatal error:', error);
+    process.exit(1);
+  }
+}
+
+// Run worker if this is the main module
+if (require.main === module) {
+  main().catch((error) => {
+    console.error('[Worker] Startup failed:', error);
+    process.exit(1);
+  });
+}
+
+export { main };
