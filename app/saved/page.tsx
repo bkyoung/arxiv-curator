@@ -191,7 +191,7 @@ export default function SavedPage() {
                   )}
 
                   {/* Why Shown */}
-                  {score?.whyShown && typeof score.whyShown === 'object' && (
+                  {score?.whyShown && typeof score.whyShown === 'object' && !Array.isArray(score.whyShown) && (
                     <div className="mb-4">
                       <WhyShown
                         whyShown={score.whyShown as Record<string, number>}

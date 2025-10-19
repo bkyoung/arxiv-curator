@@ -41,7 +41,7 @@ export const settingsRouter = router({
       return profile;
     }
 
-    // Return default configuration
+    // Return default configuration matching UserProfile schema
     return {
       id: 'default',
       userId: 'default',
@@ -49,6 +49,18 @@ export const settingsRouter = router({
       sourcesEnabled: ['arxiv'],
       useLocalEmbeddings: true,
       useLocalLLM: true,
+      preferredLLM: 'gemini-2.0-flash',
+      noiseCap: 50,
+      targetToday: 15,
+      target7d: 100,
+      includeTopics: [],
+      excludeTopics: [],
+      includeKeywords: [],
+      excludeKeywords: [],
+      mathDepthMax: 0.5,
+      explorationRate: 0.15,
+      labBoosts: {},
+      interestVector: [],
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -156,7 +168,7 @@ export const settingsRouter = router({
   updateLabPreferences: publicProcedure
     .input(
       z.object({
-        labBoosts: z.record(z.number()),
+        labBoosts: z.record(z.string(), z.number()),
       })
     )
     .mutation(async ({ input }) => {

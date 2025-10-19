@@ -11,14 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { Info } from 'lucide-react';
 
 interface WhyShownProps {
-  whyShown: {
-    novelty: number;
-    evidence: number;
-    velocity: number;
-    personalFit: number;
-    labPrior: number;
-    mathPenalty: number;
-  };
+  whyShown: Record<string, number>;
   matchedTopics?: string[];
   matchedKeywords?: string[];
   collapsible?: boolean;
