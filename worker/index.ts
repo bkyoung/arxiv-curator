@@ -54,8 +54,15 @@ async function main() {
           console.log(`[Worker] Scouted ${result.paperIds.length} papers`);
           console.log(`[Worker] Enriched ${result.enrichedCount} papers`);
         } catch (error) {
-          console.error(`[Worker] Job ${jobId} failed:`, error);
-          throw error;
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          console.error(
+            `[Worker] Scout-papers job ${jobId} failed (categories: ${categories.join(', ')}):`,
+            error
+          );
+          throw new Error(
+            `Scout-papers job ${jobId} failed: ${errorMessage}`
+          );
         }
       }
 
@@ -85,8 +92,15 @@ async function main() {
           console.log(`[Worker] Job ${jobId} completed`);
           console.log(`[Worker] Paper ${paperId} enriched`);
         } catch (error) {
-          console.error(`[Worker] Job ${jobId} failed:`, error);
-          throw error;
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          console.error(
+            `[Worker] Enrich-paper job ${jobId} failed (paperId: ${paperId}):`,
+            error
+          );
+          throw new Error(
+            `Enrich-paper job ${jobId} failed for paper ${paperId}: ${errorMessage}`
+          );
         }
       }
 
