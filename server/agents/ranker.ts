@@ -9,6 +9,9 @@ import { prisma } from '@/server/db';
 import {
   calculateEvidenceScore,
   calculatePersonalFitScore,
+  calculateNoveltyScore,
+  calculateLabPriorScore,
+  calculateMathPenalty,
 } from '@/server/lib/scoring';
 import { shouldExcludePaper } from '@/server/lib/rules';
 import type { Paper, PaperEnriched, UserProfile } from '@prisma/client';
@@ -20,9 +23,15 @@ export interface RankingOptions {
 /**
  * Rank a single paper by calculating its score
  *
- * Day 1: Evidence (E) signal only
- * Day 2: Evidence (E) + Personal Fit (P) signals
- * Future: Will add N, V, L, M signals
+ * Multi-signal scoring algorithm:
+ * - N (Novelty): 20% - How different from user's interests
+ * - E (Evidence): 25% - Quality indicators (baselines, ablations, code, etc.)
+ * - V (Velocity): 10% - Topic momentum (placeholder 0.5 for now)
+ * - P (Personal Fit): 30% - Vector similarity + rule bonuses
+ * - L (Lab Prior): 10% - Boosted labs (placeholder 0.0 until affiliation data available)
+ * - M (Math Penalty): 5% - Penalty for math-heavy papers
+ *
+ * Final score: 0.20×N + 0.25×E + 0.10×V + 0.30×P + 0.10×L - 0.05×M
  *
  * @param paper - Paper with enrichment data
  * @param options - Ranking options (user profile for personalization)
@@ -57,7 +66,7 @@ export async function rankPaper(
     }
   }
 
-  // Calculate Evidence score
+  // Calculate Evidence score (E)
   const evidenceScore = calculateEvidenceScore({
     hasBaselines: paper.enriched.hasBaselines,
     hasAblations: paper.enriched.hasAblations,
@@ -66,7 +75,30 @@ export async function rankPaper(
     hasMultipleEvals: paper.enriched.hasMultipleEvals,
   });
 
-  // Calculate Personal Fit score (Day 2)
+  // Calculate Novelty score (N)
+  let noveltyScore = 0;
+  if (userProfile && userProfile.interestVector) {
+    const userEmbedding = userProfile.interestVector as number[];
+    const paperEmbedding = paper.enriched.embedding as number[];
+
+    // TODO: Store and use user's historical keywords for better novelty detection
+    // For now, use empty array as placeholder
+    noveltyScore = calculateNoveltyScore({
+      paperEmbedding,
+      userCentroid: userEmbedding, // Use current interest vector as centroid
+      paperText,
+      userHistoricalKeywords: [], // Placeholder - need to track keyword history
+    });
+  } else {
+    // No user profile = treat as moderately novel
+    noveltyScore = 0.5;
+  }
+
+  // Calculate Velocity score (V)
+  // TODO: Implement velocity tracking in Phase 7
+  const velocityScore = 0.5; // Placeholder
+
+  // Calculate Personal Fit score (P)
   let personalFitScore = 0;
   if (userProfile && userProfile.interestVector) {
     const userEmbedding = userProfile.interestVector as number[];
@@ -84,50 +116,73 @@ export async function rankPaper(
     });
   }
 
-  // Calculate final score
-  // Day 1: finalScore = Evidence only
-  // Day 2: finalScore = 0.5 × Evidence + 0.5 × PersonalFit
-  // Future: Full weighted combination of all 6 signals
-  const finalScore = userProfile
-    ? 0.5 * evidenceScore + 0.5 * personalFitScore
-    : evidenceScore;
+  // Calculate Lab Prior score (L)
+  // TODO: Add author affiliation data to enable lab matching
+  // For now, use placeholder 0.0
+  const labPriorScore = 0.0; // Placeholder - need affiliation data
+
+  // Calculate Math Penalty (M)
+  let mathPenalty = 0;
+  if (userProfile) {
+    // mathDepthMax is tolerance (0-1), convert to sensitivity
+    const sensitivity = 1 - userProfile.mathDepthMax;
+    mathPenalty = calculateMathPenalty({
+      mathDepth: paper.enriched.mathDepth,
+      userSensitivity: sensitivity,
+    });
+  }
+
+  // Calculate final score using weighted formula
+  // Formula: 0.20×N + 0.25×E + 0.10×V + 0.30×P + 0.10×L - 0.05×M
+  const finalScore =
+    0.2 * noveltyScore +
+    0.25 * evidenceScore +
+    0.1 * velocityScore +
+    0.3 * personalFitScore +
+    0.1 * labPriorScore -
+    0.05 * mathPenalty;
+
+  // Clamp final score to [0, 1] range
+  const clampedScore = Math.max(0, Math.min(1, finalScore));
 
   // Build why shown explanation
   const whyShown: Record<string, number> = {
+    novelty: noveltyScore,
     evidence: evidenceScore,
+    velocity: velocityScore,
+    personalFit: personalFitScore,
+    labPrior: labPriorScore,
+    mathPenalty: mathPenalty,
   };
-  if (userProfile) {
-    whyShown.personalFit = personalFitScore;
-  }
 
   // Store score in database
   const score = await prisma.score.upsert({
     where: { paperId: paper.id },
     update: {
+      novelty: noveltyScore,
       evidence: evidenceScore,
-      novelty: 0, // Placeholder for future implementation
-      velocity: 0, // Placeholder for future implementation
+      velocity: velocityScore,
       personalFit: personalFitScore,
-      labPrior: 0, // Placeholder for future implementation
-      mathPenalty: 0, // Placeholder for future implementation
-      finalScore,
+      labPrior: labPriorScore,
+      mathPenalty: mathPenalty,
+      finalScore: clampedScore,
       whyShown,
     },
     create: {
       paperId: paper.id,
+      novelty: noveltyScore,
       evidence: evidenceScore,
-      novelty: 0,
-      velocity: 0,
+      velocity: velocityScore,
       personalFit: personalFitScore,
-      labPrior: 0,
-      mathPenalty: 0,
-      finalScore,
+      labPrior: labPriorScore,
+      mathPenalty: mathPenalty,
+      finalScore: clampedScore,
       whyShown,
     },
   });
 
   console.log(
-    `[Ranker] Ranked ${paper.arxivId}: E=${evidenceScore.toFixed(2)}, P=${personalFitScore.toFixed(2)}, final=${finalScore.toFixed(2)}`
+    `[Ranker] Ranked ${paper.arxivId}: N=${noveltyScore.toFixed(2)}, E=${evidenceScore.toFixed(2)}, V=${velocityScore.toFixed(2)}, P=${personalFitScore.toFixed(2)}, L=${labPriorScore.toFixed(2)}, M=${mathPenalty.toFixed(2)}, final=${clampedScore.toFixed(2)}`
   );
 
   return score;

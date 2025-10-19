@@ -23,6 +23,24 @@ export interface PersonalFitInput {
   paperText: string;
 }
 
+export interface NoveltyInput {
+  paperEmbedding: number[];
+  userCentroid: number[];
+  paperText: string;
+  userHistoricalKeywords: string[];
+}
+
+export interface LabPriorInput {
+  authors: string[];
+  boostedLabs: string[];
+  authorAffiliations: Record<string, string>;
+}
+
+export interface MathPenaltyInput {
+  mathDepth: number;
+  userSensitivity: number;
+}
+
 /**
  * Calculate Evidence score (E) from paper's evidence signals
  *
@@ -129,4 +147,130 @@ export function calculatePersonalFitScore(input: PersonalFitInput): number {
   const personalFit = 0.7 * vectorSimilarity + 0.3 * ruleBonus;
 
   return personalFit;
+}
+
+/**
+ * Calculate Novelty score (N)
+ *
+ * Measures how novel/different a paper is from user's historical interests
+ *
+ * Formula: N = 0.5 × centroid_distance + 0.5 × keyword_novelty
+ *
+ * Centroid distance: Cosine distance from user's interest centroid
+ * Keyword novelty: Ratio of novel keywords to total keywords
+ *
+ * @param input - Novelty inputs
+ * @returns Novelty score in range [0, 1]
+ */
+export function calculateNoveltyScore(input: NoveltyInput): number {
+  // Check if user has any history
+  const hasHistory =
+    input.userCentroid.some((val) => val !== 0) ||
+    input.userHistoricalKeywords.length > 0;
+
+  if (!hasHistory) {
+    // No user history = treat everything as novel
+    return 1.0;
+  }
+
+  // Calculate centroid distance
+  let centroidDistance = 0;
+  if (input.userCentroid.some((val) => val !== 0)) {
+    const similarity = calculateCosineSimilarity(
+      input.paperEmbedding,
+      input.userCentroid
+    );
+    // Distance = 1 - similarity
+    centroidDistance = 1 - similarity;
+  } else {
+    // Zero centroid = max distance
+    centroidDistance = 1.0;
+  }
+
+  // Calculate keyword novelty
+  let keywordNovelty = 0;
+  if (input.paperText.trim().length > 0) {
+    // Simple keyword extraction: split by whitespace and lowercase
+    const paperKeywords = input.paperText
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((word) => word.length > 0);
+
+    if (paperKeywords.length > 0) {
+      if (input.userHistoricalKeywords.length === 0) {
+        // No historical keywords = treat all paper keywords as novel
+        keywordNovelty = 1.0;
+      } else {
+        // Check which paper keywords match any historical keyword
+        const historicalKeywordsLower = input.userHistoricalKeywords.map((k) =>
+          k.toLowerCase()
+        );
+
+        const novelKeywords = paperKeywords.filter((paperKeyword) => {
+          // Check if this paper keyword appears in any historical keyword
+          return !historicalKeywordsLower.some((historicalKeyword) =>
+            historicalKeyword.includes(paperKeyword)
+          );
+        });
+
+        keywordNovelty = novelKeywords.length / paperKeywords.length;
+      }
+    }
+  }
+
+  // Combine: 50% centroid distance + 50% keyword novelty
+  const novelty = 0.5 * centroidDistance + 0.5 * keywordNovelty;
+
+  return novelty;
+}
+
+/**
+ * Calculate Lab Prior score (L)
+ *
+ * Binary signal: 1.0 if any author is from a boosted lab, 0.0 otherwise
+ *
+ * @param input - Lab prior inputs
+ * @returns Lab prior score (0.0 or 1.0)
+ */
+export function calculateLabPriorScore(input: LabPriorInput): number {
+  if (input.boostedLabs.length === 0) {
+    return 0.0;
+  }
+
+  // Normalize boosted labs to lowercase for case-insensitive matching
+  const boostedLabsLower = input.boostedLabs.map((lab) => lab.toLowerCase());
+
+  // Check if any author is from a boosted lab
+  for (const author of input.authors) {
+    const affiliation = input.authorAffiliations[author];
+    if (affiliation) {
+      const affiliationLower = affiliation.toLowerCase();
+
+      // Check if affiliation contains any boosted lab (substring match)
+      for (const lab of boostedLabsLower) {
+        if (affiliationLower.includes(lab)) {
+          return 1.0; // Match found
+        }
+      }
+    }
+  }
+
+  return 0.0; // No match
+}
+
+/**
+ * Calculate Math Penalty (M)
+ *
+ * Penalty for math-heavy papers based on user sensitivity
+ *
+ * Formula: M = min(mathDepth × userSensitivity, 1.0)
+ *
+ * @param input - Math penalty inputs
+ * @returns Penalty score in range [0, 1]
+ */
+export function calculateMathPenalty(input: MathPenaltyInput): number {
+  const penalty = input.mathDepth * input.userSensitivity;
+
+  // Cap at 1.0
+  return Math.min(penalty, 1.0);
 }

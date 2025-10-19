@@ -3,8 +3,17 @@ import {
   calculateEvidenceScore,
   calculateCosineSimilarity,
   calculatePersonalFitScore,
+  calculateNoveltyScore,
+  calculateLabPriorScore,
+  calculateMathPenalty,
 } from '@/server/lib/scoring';
-import type { EvidenceSignals, PersonalFitInput } from '@/server/lib/scoring';
+import type {
+  EvidenceSignals,
+  PersonalFitInput,
+  NoveltyInput,
+  LabPriorInput,
+  MathPenaltyInput,
+} from '@/server/lib/scoring';
 
 describe('Scoring Library', () => {
   describe('calculateEvidenceScore', () => {
@@ -326,6 +335,278 @@ describe('Scoring Library', () => {
       const score = calculatePersonalFitScore(input);
       expect(score).toBeGreaterThanOrEqual(0);
       expect(score).toBeLessThanOrEqual(1);
+    });
+  });
+
+  describe('calculateNoveltyScore', () => {
+    it('should return high novelty for paper far from user centroid', () => {
+      const input: NoveltyInput = {
+        paperEmbedding: [1, 0, 0],
+        userCentroid: [0, 1, 0], // Orthogonal = high distance
+        paperText: 'quantum computing blockchain',
+        userHistoricalKeywords: ['machine learning', 'neural networks'],
+      };
+
+      const score = calculateNoveltyScore(input);
+      // High centroid distance + novel keywords = high novelty
+      expect(score).toBeGreaterThan(0.5);
+    });
+
+    it('should return low novelty for paper close to user centroid', () => {
+      const input: NoveltyInput = {
+        paperEmbedding: [1, 0, 0],
+        userCentroid: [1, 0, 0], // Identical = low distance
+        paperText: 'machine learning neural networks',
+        userHistoricalKeywords: ['machine learning', 'neural networks'],
+      };
+
+      const score = calculateNoveltyScore(input);
+      // Low centroid distance + familiar keywords = low novelty
+      expect(score).toBeLessThan(0.3);
+    });
+
+    it('should calculate centroid distance correctly', () => {
+      const input: NoveltyInput = {
+        paperEmbedding: [1, 0, 0],
+        userCentroid: [0, 1, 0], // Orthogonal vectors
+        paperText: '',
+        userHistoricalKeywords: [],
+      };
+
+      const score = calculateNoveltyScore(input);
+      // Pure centroid distance for orthogonal vectors
+      // Cosine similarity = 0.5 (normalized), distance = 1 - 0.5 = 0.5
+      // N = 0.5 × 0.5 + 0.5 × 0 = 0.25
+      expect(score).toBeCloseTo(0.25, 2);
+    });
+
+    it('should detect novel keywords', () => {
+      const input: NoveltyInput = {
+        paperEmbedding: [1, 0, 0],
+        userCentroid: [1, 0, 0], // Same vector
+        paperText: 'quantum computing entanglement',
+        userHistoricalKeywords: ['machine learning', 'deep learning'],
+      };
+
+      const score = calculateNoveltyScore(input);
+      // Low centroid distance but high keyword novelty
+      // All keywords are novel (3 novel / 3 total = 1.0)
+      // N = 0.5 × 0 + 0.5 × 1.0 = 0.5
+      expect(score).toBeCloseTo(0.5, 2);
+    });
+
+    it('should handle empty user history', () => {
+      const input: NoveltyInput = {
+        paperEmbedding: [1, 0, 0],
+        userCentroid: [0, 0, 0], // Zero vector (no history)
+        paperText: 'some paper text',
+        userHistoricalKeywords: [],
+      };
+
+      const score = calculateNoveltyScore(input);
+      // No user history = treat as novel
+      expect(score).toBe(1.0);
+    });
+
+    it('should normalize score to [0, 1] range', () => {
+      const input: NoveltyInput = {
+        paperEmbedding: [1, 2, 3],
+        userCentroid: [4, 5, 6],
+        paperText: 'test keywords',
+        userHistoricalKeywords: ['other', 'words'],
+      };
+
+      const score = calculateNoveltyScore(input);
+      expect(score).toBeGreaterThanOrEqual(0);
+      expect(score).toBeLessThanOrEqual(1);
+    });
+
+    it('should combine centroid distance and keyword novelty equally', () => {
+      const input: NoveltyInput = {
+        paperEmbedding: [1, 0, 0],
+        userCentroid: [0, 1, 0], // Centroid distance = 0.5
+        paperText: 'word1 word2',
+        userHistoricalKeywords: ['word1'], // 1 familiar, 1 novel = 0.5 novelty
+      };
+
+      const score = calculateNoveltyScore(input);
+      // N = 0.5 × 0.5 + 0.5 × 0.5 = 0.5
+      expect(score).toBeCloseTo(0.5, 2);
+    });
+  });
+
+  describe('calculateLabPriorScore', () => {
+    it('should return 1.0 when author matches boosted lab', () => {
+      const input: LabPriorInput = {
+        authors: ['John Doe', 'Jane Smith'],
+        boostedLabs: ['OpenAI', 'DeepMind'],
+        authorAffiliations: {
+          'John Doe': 'OpenAI',
+          'Jane Smith': 'Stanford University',
+        },
+      };
+
+      const score = calculateLabPriorScore(input);
+      expect(score).toBe(1.0);
+    });
+
+    it('should return 0.0 when no author matches boosted labs', () => {
+      const input: LabPriorInput = {
+        authors: ['John Doe', 'Jane Smith'],
+        boostedLabs: ['OpenAI', 'DeepMind'],
+        authorAffiliations: {
+          'John Doe': 'Stanford University',
+          'Jane Smith': 'MIT',
+        },
+      };
+
+      const score = calculateLabPriorScore(input);
+      expect(score).toBe(0.0);
+    });
+
+    it('should return 1.0 when multiple authors match boosted labs', () => {
+      const input: LabPriorInput = {
+        authors: ['John Doe', 'Jane Smith'],
+        boostedLabs: ['OpenAI', 'DeepMind'],
+        authorAffiliations: {
+          'John Doe': 'OpenAI',
+          'Jane Smith': 'DeepMind',
+        },
+      };
+
+      const score = calculateLabPriorScore(input);
+      // At least one match = 1.0
+      expect(score).toBe(1.0);
+    });
+
+    it('should be case insensitive', () => {
+      const input: LabPriorInput = {
+        authors: ['John Doe'],
+        boostedLabs: ['openai'],
+        authorAffiliations: {
+          'John Doe': 'OpenAI',
+        },
+      };
+
+      const score = calculateLabPriorScore(input);
+      expect(score).toBe(1.0);
+    });
+
+    it('should handle empty boosted labs', () => {
+      const input: LabPriorInput = {
+        authors: ['John Doe'],
+        boostedLabs: [],
+        authorAffiliations: {
+          'John Doe': 'OpenAI',
+        },
+      };
+
+      const score = calculateLabPriorScore(input);
+      expect(score).toBe(0.0);
+    });
+
+    it('should handle missing affiliation data', () => {
+      const input: LabPriorInput = {
+        authors: ['John Doe', 'Jane Smith'],
+        boostedLabs: ['OpenAI'],
+        authorAffiliations: {
+          'John Doe': 'OpenAI',
+          // Jane Smith missing
+        },
+      };
+
+      const score = calculateLabPriorScore(input);
+      // John matches
+      expect(score).toBe(1.0);
+    });
+
+    it('should handle partial lab name matches', () => {
+      const input: LabPriorInput = {
+        authors: ['John Doe'],
+        boostedLabs: ['Google'],
+        authorAffiliations: {
+          'John Doe': 'Google Research',
+        },
+      };
+
+      const score = calculateLabPriorScore(input);
+      // Substring match should work
+      expect(score).toBe(1.0);
+    });
+  });
+
+  describe('calculateMathPenalty', () => {
+    it('should return 0 for zero math depth', () => {
+      const input: MathPenaltyInput = {
+        mathDepth: 0,
+        userSensitivity: 0.5,
+      };
+
+      const penalty = calculateMathPenalty(input);
+      expect(penalty).toBe(0);
+    });
+
+    it('should return max penalty for high math depth and high sensitivity', () => {
+      const input: MathPenaltyInput = {
+        mathDepth: 1.0,
+        userSensitivity: 1.0,
+      };
+
+      const penalty = calculateMathPenalty(input);
+      expect(penalty).toBe(1.0); // Full penalty
+    });
+
+    it('should return no penalty for zero sensitivity', () => {
+      const input: MathPenaltyInput = {
+        mathDepth: 1.0,
+        userSensitivity: 0.0,
+      };
+
+      const penalty = calculateMathPenalty(input);
+      expect(penalty).toBe(0);
+    });
+
+    it('should calculate penalty proportionally', () => {
+      const input: MathPenaltyInput = {
+        mathDepth: 0.5,
+        userSensitivity: 0.5,
+      };
+
+      const penalty = calculateMathPenalty(input);
+      // M = mathDepth × sensitivity = 0.5 × 0.5 = 0.25
+      expect(penalty).toBeCloseTo(0.25, 5);
+    });
+
+    it('should handle default user sensitivity of 0.5', () => {
+      const input: MathPenaltyInput = {
+        mathDepth: 0.8,
+        userSensitivity: 0.5, // Default
+      };
+
+      const penalty = calculateMathPenalty(input);
+      // M = 0.8 × 0.5 = 0.4
+      expect(penalty).toBeCloseTo(0.4, 5);
+    });
+
+    it('should cap penalty at 1.0', () => {
+      const input: MathPenaltyInput = {
+        mathDepth: 1.5, // Could be > 1 from enricher
+        userSensitivity: 1.0,
+      };
+
+      const penalty = calculateMathPenalty(input);
+      expect(penalty).toBeLessThanOrEqual(1.0);
+    });
+
+    it('should be in range [0, 1]', () => {
+      const input: MathPenaltyInput = {
+        mathDepth: 0.7,
+        userSensitivity: 0.6,
+      };
+
+      const penalty = calculateMathPenalty(input);
+      expect(penalty).toBeGreaterThanOrEqual(0);
+      expect(penalty).toBeLessThanOrEqual(1);
     });
   });
 });

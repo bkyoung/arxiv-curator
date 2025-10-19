@@ -178,20 +178,27 @@ describe('Ranker Agent', () => {
       );
     });
 
-    it('should store final score equal to evidence score (Day 1 - only Evidence signal)', async () => {
+    it('should calculate multi-signal final score (Day 3 - all signals)', async () => {
       const { prisma } = await import('@/server/db');
 
       (prisma.score.upsert as any).mockResolvedValue({
         id: 'score-4',
         paperId: 'paper-1',
-        novelty: 0,
+        novelty: 0.5,
         evidence: 0.65,
-        velocity: 0,
+        velocity: 0.5,
         personalFit: 0,
         labPrior: 0,
         mathPenalty: 0,
-        finalScore: 0.65, // Equal to evidence for now
-        whyShown: { evidence: 0.65 },
+        finalScore: 0.3125, // Weighted formula
+        whyShown: {
+          novelty: 0.5,
+          evidence: 0.65,
+          velocity: 0.5,
+          personalFit: 0,
+          labPrior: 0,
+          mathPenalty: 0,
+        },
         createdAt: new Date(),
       });
 
@@ -210,13 +217,23 @@ describe('Ranker Agent', () => {
       expect(prisma.score.upsert).toHaveBeenCalledWith({
         where: { paperId: 'paper-1' },
         update: expect.objectContaining({
-          evidence: 0.65,
-          finalScore: 0.65, // For Day 1, finalScore = evidence score
+          novelty: 0.5, // No user profile = placeholder
+          evidence: 0.65, // 0.3 + 0.2 + 0.15
+          velocity: 0.5, // Placeholder
+          personalFit: 0, // No user profile
+          labPrior: 0, // Placeholder (no affiliation data)
+          mathPenalty: 0, // No user profile
+          finalScore: 0.3125, // 0.2×0.5 + 0.25×0.65 + 0.1×0.5 + 0.3×0 + 0.1×0 - 0.05×0
         }),
         create: expect.objectContaining({
           paperId: 'paper-1',
+          novelty: 0.5,
           evidence: 0.65,
-          finalScore: 0.65,
+          velocity: 0.5,
+          personalFit: 0,
+          labPrior: 0,
+          mathPenalty: 0,
+          finalScore: 0.3125,
         }),
       });
     });

@@ -1,6 +1,6 @@
 # Phase 2: Personalization & Scoring - Implementation Checklist
 
-**Status**: In Progress - Day 1 (Core Scoring + Evidence Signal)
+**Status**: In Progress - Day 3 Complete ✅ (Next: Day 4 - Feedback System)
 **Start Date**: October 19, 2025
 **Timeline**: Week 3 (Serial Development Roadmap)
 **Dependencies**: Phase 1 (Ingestion & Enrichment) ✅ Complete
@@ -26,20 +26,20 @@ Phase 2 implements the personalization and ranking engine that makes papers pers
   - [x] Define scoring weights and configuration
   - [x] Test basic scoring pipeline (15 tests passing)
 
-- [ ] **Signal 1: Novelty (N)** - 20% weight
-  - [ ] Implement centroid distance calculation
-    - [ ] Compute user vector centroid from profile
-    - [ ] Calculate cosine distance from centroid
-    - [ ] Normalize to 0-1 range
-  - [ ] Implement novel keywords detection
-    - [ ] Extract keywords from title/abstract (TF-IDF or simple regex)
-    - [ ] Compare against user's historical keywords
-    - [ ] Score based on novelty ratio
-  - [ ] Implement LOF (Local Outlier Factor) - optional for Phase 2
+- [x] **Signal 1: Novelty (N)** - 20% weight ✅ Day 3 Complete
+  - [x] Implement centroid distance calculation
+    - [x] Compute user vector centroid from profile (using interestVector as centroid)
+    - [x] Calculate cosine distance from centroid
+    - [x] Normalize to 0-1 range
+  - [x] Implement novel keywords detection
+    - [x] Extract keywords from title/abstract (simple whitespace split)
+    - [x] Compare against user's historical keywords
+    - [x] Score based on novelty ratio
+  - [ ] Implement LOF (Local Outlier Factor) - optional for Phase 2 (DEFERRED)
     - [ ] Calculate local density vs neighbors
     - [ ] Identify outliers in embedding space
-  - [ ] Combine sub-signals: `N = 0.5 × centroid_distance + 0.5 × novel_keywords`
-  - [ ] Test novelty scoring with sample papers
+  - [x] Combine sub-signals: `N = 0.5 × centroid_distance + 0.5 × novel_keywords`
+  - [x] Test novelty scoring with sample papers (7 tests passing)
 
 - [x] **Signal 2: Evidence (E)** - 25% weight ✅ Day 1 Complete
   - [x] Use existing evidence signals from Enricher Agent:
@@ -71,25 +71,27 @@ Phase 2 implements the personalization and ranking engine that makes papers pers
   - [x] Combine: `P = 0.7 × cosine_similarity + 0.3 × rule_bonuses`
   - [x] Test personal fit scoring (9 tests)
 
-- [ ] **Signal 5: Lab Prior (L)** - 10% weight
-  - [ ] Implement lab boost configuration in `UserProfile`
-  - [ ] Match paper authors against boosted labs
-  - [ ] Apply boost multiplier (default 1.5x)
-  - [ ] Test lab prior scoring
+- [x] **Signal 5: Lab Prior (L)** - 10% weight ✅ Day 3 Complete (Placeholder)
+  - [x] Implement lab boost configuration in `UserProfile` (using existing labBoosts field)
+  - [x] Match paper authors against boosted labs (implementation ready, awaiting affiliation data)
+  - [x] Apply boost multiplier (binary 0/1 for now)
+  - [x] Test lab prior scoring (7 tests passing)
+  - [ ] **TODO**: Add author affiliation data to enable full lab matching
 
-- [ ] **Signal 6: Math Penalty (M)** - 5% weight (negative signal)
-  - [ ] Use `mathDepth` from Enricher Agent
-  - [ ] Load user's math sensitivity preference (0-1, default 0.5)
-  - [ ] Calculate penalty: `M = -1 × mathDepth × sensitivity`
-  - [ ] Apply penalty to final score
-  - [ ] Test math penalty scoring
+- [x] **Signal 6: Math Penalty (M)** - 5% weight (negative signal) ✅ Day 3 Complete
+  - [x] Use `mathDepth` from Enricher Agent
+  - [x] Load user's math sensitivity preference (using mathDepthMax as tolerance)
+  - [x] Calculate penalty: `M = mathDepth × (1 - mathDepthMax)`
+  - [x] Apply penalty to final score (subtracted in weighted formula)
+  - [x] Test math penalty scoring (7 tests passing)
 
-- [ ] **Final Score Computation**
-  - [ ] Implement weighted combination:
-    - [ ] `final_score = 0.20×N + 0.25×E + 0.10×V + 0.30×P + 0.10×L + 0.05×M`
-  - [ ] Normalize to 0-1 range
-  - [ ] Store in `Score` table with component breakdown
-  - [ ] Test final scoring with diverse papers
+- [x] **Final Score Computation** ✅ Day 3 Complete
+  - [x] Implement weighted combination:
+    - [x] `final_score = 0.20×N + 0.25×E + 0.10×V + 0.30×P + 0.10×L - 0.05×M`
+  - [x] Clamp to [0, 1] range
+  - [x] Store in `Score` table with component breakdown
+  - [x] Test final scoring with diverse papers (all ranker tests passing)
+  - [ ] **Note**: V (Velocity) uses placeholder 0.5 until Phase 7
 
 - [ ] **Batch Scoring**
   - [ ] Implement `scorePapers()` function to score multiple papers
