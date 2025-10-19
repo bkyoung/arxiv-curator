@@ -187,3 +187,123 @@ export async function rankPaper(
 
   return score;
 }
+
+/**
+ * Batch score multiple papers
+ *
+ * @param paperIds - Array of paper IDs to score
+ * @param options - Ranking options (user profile for personalization)
+ * @returns Array of scores (null for excluded papers)
+ */
+export async function scorePapers(
+  paperIds: string[],
+  options: RankingOptions = {}
+) {
+  console.log(`[Ranker] Batch scoring ${paperIds.length} papers...`);
+
+  // Fetch papers with enrichment data
+  const papers = await prisma.paper.findMany({
+    where: {
+      id: { in: paperIds },
+      status: 'enriched',
+    },
+    include: {
+      enriched: true,
+    },
+  });
+
+  console.log(`[Ranker] Found ${papers.length} enriched papers to score`);
+
+  // Score each paper
+  const scores = await Promise.all(
+    papers.map(async (paper) => {
+      try {
+        return await rankPaper(paper, options);
+      } catch (error) {
+        console.error(`[Ranker] Error scoring paper ${paper.arxivId}:`, error);
+        return null;
+      }
+    })
+  );
+
+  // Update paper status to "ranked" for successfully scored papers
+  const scoredPaperIds = scores
+    .map((score, i) => (score ? papers[i].id : null))
+    .filter((id): id is string => id !== null);
+
+  if (scoredPaperIds.length > 0) {
+    await prisma.paper.updateMany({
+      where: { id: { in: scoredPaperIds } },
+      data: { status: 'ranked' },
+    });
+
+    console.log(`[Ranker] Marked ${scoredPaperIds.length} papers as ranked`);
+  }
+
+  const successCount = scores.filter((s) => s !== null).length;
+  console.log(
+    `[Ranker] Batch scoring complete: ${successCount}/${papers.length} papers scored`
+  );
+
+  return scores;
+}
+
+/**
+ * Score all enriched papers that haven't been scored yet
+ *
+ * @param options - Ranking options (user profile for personalization)
+ * @returns Array of scores
+ */
+export async function scoreUnrankedPapers(options: RankingOptions = {}) {
+  console.log(`[Ranker] Finding unranked papers...`);
+
+  // Find enriched papers without scores
+  const papers = await prisma.paper.findMany({
+    where: {
+      status: 'enriched',
+      scores: {
+        none: {},
+      },
+    },
+    include: {
+      enriched: true,
+    },
+  });
+
+  console.log(`[Ranker] Found ${papers.length} unranked papers`);
+
+  if (papers.length === 0) {
+    return [];
+  }
+
+  // Score all papers
+  const scores = await Promise.all(
+    papers.map(async (paper) => {
+      try {
+        return await rankPaper(paper, options);
+      } catch (error) {
+        console.error(`[Ranker] Error scoring paper ${paper.arxivId}:`, error);
+        return null;
+      }
+    })
+  );
+
+  // Update status for scored papers
+  const scoredPaperIds = scores
+    .map((score, i) => (score ? papers[i].id : null))
+    .filter((id): id is string => id !== null);
+
+  if (scoredPaperIds.length > 0) {
+    await prisma.paper.updateMany({
+      where: { id: { in: scoredPaperIds } },
+      data: { status: 'ranked' },
+    });
+  }
+
+  const successCount = scores.filter((s) => s !== null).length;
+  console.log(
+    `[Ranker] Scored ${successCount}/${papers.length} unranked papers`
+  );
+
+  return scores;
+}

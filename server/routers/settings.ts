@@ -118,4 +118,110 @@ export const settingsRouter = router({
         });
       }
     }),
+
+  /**
+   * Update personalization settings (topics, keywords)
+   */
+  updatePersonalization: publicProcedure
+    .input(
+      z.object({
+        includeTopics: z.array(z.string()).optional(),
+        excludeTopics: z.array(z.string()).optional(),
+        includeKeywords: z.array(z.string()).optional(),
+        excludeKeywords: z.array(z.string()).optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const existing = await prisma.userProfile.findFirst();
+
+      if (!existing) {
+        throw new Error('User profile not found');
+      }
+
+      return await prisma.userProfile.update({
+        where: { id: existing.id },
+        data: {
+          includeTopics: input.includeTopics,
+          excludeTopics: input.excludeTopics,
+          includeKeywords: input.includeKeywords,
+          excludeKeywords: input.excludeKeywords,
+          updatedAt: new Date(),
+        },
+      });
+    }),
+
+  /**
+   * Update lab preferences
+   */
+  updateLabPreferences: publicProcedure
+    .input(
+      z.object({
+        labBoosts: z.record(z.number()),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const existing = await prisma.userProfile.findFirst();
+
+      if (!existing) {
+        throw new Error('User profile not found');
+      }
+
+      return await prisma.userProfile.update({
+        where: { id: existing.id },
+        data: {
+          labBoosts: input.labBoosts,
+          updatedAt: new Date(),
+        },
+      });
+    }),
+
+  /**
+   * Update math sensitivity
+   */
+  updateMathSensitivity: publicProcedure
+    .input(
+      z.object({
+        mathDepthMax: z.number().min(0).max(1),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const existing = await prisma.userProfile.findFirst();
+
+      if (!existing) {
+        throw new Error('User profile not found');
+      }
+
+      return await prisma.userProfile.update({
+        where: { id: existing.id },
+        data: {
+          mathDepthMax: input.mathDepthMax,
+          updatedAt: new Date(),
+        },
+      });
+    }),
+
+  /**
+   * Update exploration rate
+   */
+  updateExplorationRate: publicProcedure
+    .input(
+      z.object({
+        explorationRate: z.number().min(0).max(0.3),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const existing = await prisma.userProfile.findFirst();
+
+      if (!existing) {
+        throw new Error('User profile not found');
+      }
+
+      return await prisma.userProfile.update({
+        where: { id: existing.id },
+        data: {
+          explorationRate: input.explorationRate,
+          updatedAt: new Date(),
+        },
+      });
+    }),
 });

@@ -1,11 +1,12 @@
 /**
  * Scout-Enrich Workflow
  *
- * Workflow that orchestrates paper ingestion and enrichment
+ * Workflow that orchestrates paper ingestion, enrichment, and ranking
  */
 
 import { ingestRecentPapers } from '@/server/agents/scout';
 import { enrichPaper } from '@/server/agents/enricher';
+import { scoreUnrankedPapers } from '@/server/agents/ranker';
 import { prisma } from '@/server/db';
 
 /**
@@ -16,18 +17,20 @@ interface PipelineState {
   maxResults: number;
   paperIds: string[];
   enrichedCount: number;
+  rankedCount: number;
 }
 
 /**
  * Scout-Enrich workflow
  *
- * Executes a two-stage pipeline:
+ * Executes a three-stage pipeline:
  * 1. Scout: Ingest papers from arXiv
  * 2. Enrich: Generate embeddings and classify papers
+ * 3. Rank: Score papers using multi-signal algorithm
  *
  * @param categories - arXiv categories to ingest (e.g., ['cs.AI', 'cs.LG'])
  * @param maxResults - Maximum number of papers to ingest
- * @returns Final workflow state with paper IDs and enrichment count
+ * @returns Final workflow state with paper IDs, enrichment count, and ranking count
  */
 export async function scoutEnrichWorkflow(
   categories: string[],
@@ -75,16 +78,34 @@ export async function scoutEnrichWorkflow(
 
   console.log(`[Enrich Node] Enriched ${enrichedCount} papers`);
 
+  // 3. Rank Node - Score all enriched papers
+  console.log(`[Rank Node] Scoring unranked papers`);
+  let rankedCount = 0;
+
+  try {
+    // Get user profile for personalization
+    const userProfile = await prisma.userProfile.findFirst();
+
+    // Score all papers that were just enriched
+    const scores = await scoreUnrankedPapers({ userProfile });
+    rankedCount = scores.filter((s) => s !== null).length;
+    console.log(`[Rank Node] Scored ${rankedCount} papers`);
+  } catch (error) {
+    console.error('[Rank Node] Error:', error);
+  }
+
   const result = {
     categories,
     maxResults,
     paperIds,
     enrichedCount,
+    rankedCount,
   };
 
   console.log('[Workflow] Completed');
   console.log(`[Workflow] Total papers: ${result.paperIds.length}`);
   console.log(`[Workflow] Enriched: ${result.enrichedCount}`);
+  console.log(`[Workflow] Ranked: ${result.rankedCount}`);
 
   return result;
 }
