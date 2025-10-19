@@ -6,20 +6,31 @@
  */
 
 import { prisma } from '@/server/db';
-import { calculateEvidenceScore } from '@/server/lib/scoring';
-import type { Paper, PaperEnriched } from '@prisma/client';
+import {
+  calculateEvidenceScore,
+  calculatePersonalFitScore,
+} from '@/server/lib/scoring';
+import { shouldExcludePaper } from '@/server/lib/rules';
+import type { Paper, PaperEnriched, UserProfile } from '@prisma/client';
+
+export interface RankingOptions {
+  userProfile?: UserProfile | null;
+}
 
 /**
  * Rank a single paper by calculating its score
  *
- * Day 1 implementation: Only Evidence (E) signal
- * Future: Will add N, V, P, L, M signals
+ * Day 1: Evidence (E) signal only
+ * Day 2: Evidence (E) + Personal Fit (P) signals
+ * Future: Will add N, V, L, M signals
  *
  * @param paper - Paper with enrichment data
- * @returns Score record
+ * @param options - Ranking options (user profile for personalization)
+ * @returns Score record or null if paper is excluded
  */
 export async function rankPaper(
-  paper: Paper & { enriched: PaperEnriched | null }
+  paper: Paper & { enriched: PaperEnriched | null },
+  options: RankingOptions = {}
 ) {
   console.log(`[Ranker] Ranking paper ${paper.arxivId}...`);
 
@@ -28,7 +39,25 @@ export async function rankPaper(
     throw new Error(`Paper ${paper.arxivId} has not been enriched`);
   }
 
-  // Calculate Evidence score (Day 1)
+  const { userProfile } = options;
+  const paperText = `${paper.title} ${paper.abstract}`;
+
+  // Check exclusion rules (Day 2)
+  if (userProfile) {
+    const excluded = shouldExcludePaper({
+      paperTopics: paper.enriched.topics,
+      excludedTopics: userProfile.excludeTopics,
+      excludedKeywords: userProfile.excludeKeywords,
+      paperText,
+    });
+
+    if (excluded) {
+      console.log(`[Ranker] Paper ${paper.arxivId} excluded by user rules`);
+      return null; // Hard filter - don't score excluded papers
+    }
+  }
+
+  // Calculate Evidence score
   const evidenceScore = calculateEvidenceScore({
     hasBaselines: paper.enriched.hasBaselines,
     hasAblations: paper.enriched.hasAblations,
@@ -37,9 +66,39 @@ export async function rankPaper(
     hasMultipleEvals: paper.enriched.hasMultipleEvals,
   });
 
-  // For Day 1: Final score = Evidence score only
-  // Future: Will add weighted combination of all signals
-  const finalScore = evidenceScore;
+  // Calculate Personal Fit score (Day 2)
+  let personalFitScore = 0;
+  if (userProfile && userProfile.interestVector) {
+    const userEmbedding = userProfile.interestVector as number[];
+    const paperEmbedding = paper.enriched.embedding as number[];
+
+    personalFitScore = calculatePersonalFitScore({
+      paperEmbedding,
+      userEmbedding,
+      paperTopics: paper.enriched.topics,
+      includedTopics: userProfile.includeTopics,
+      excludedTopics: userProfile.excludeTopics,
+      includedKeywords: userProfile.includeKeywords,
+      excludedKeywords: userProfile.excludeKeywords,
+      paperText,
+    });
+  }
+
+  // Calculate final score
+  // Day 1: finalScore = Evidence only
+  // Day 2: finalScore = 0.5 × Evidence + 0.5 × PersonalFit
+  // Future: Full weighted combination of all 6 signals
+  const finalScore = userProfile
+    ? 0.5 * evidenceScore + 0.5 * personalFitScore
+    : evidenceScore;
+
+  // Build why shown explanation
+  const whyShown: Record<string, number> = {
+    evidence: evidenceScore,
+  };
+  if (userProfile) {
+    whyShown.personalFit = personalFitScore;
+  }
 
   // Store score in database
   const score = await prisma.score.upsert({
@@ -48,31 +107,27 @@ export async function rankPaper(
       evidence: evidenceScore,
       novelty: 0, // Placeholder for future implementation
       velocity: 0, // Placeholder for future implementation
-      personalFit: 0, // Placeholder for future implementation
+      personalFit: personalFitScore,
       labPrior: 0, // Placeholder for future implementation
       mathPenalty: 0, // Placeholder for future implementation
       finalScore,
-      whyShown: {
-        evidence: evidenceScore,
-      },
+      whyShown,
     },
     create: {
       paperId: paper.id,
       evidence: evidenceScore,
       novelty: 0,
       velocity: 0,
-      personalFit: 0,
+      personalFit: personalFitScore,
       labPrior: 0,
       mathPenalty: 0,
       finalScore,
-      whyShown: {
-        evidence: evidenceScore,
-      },
+      whyShown,
     },
   });
 
   console.log(
-    `[Ranker] Ranked ${paper.arxivId}: evidence=${evidenceScore.toFixed(2)}, final=${finalScore.toFixed(2)}`
+    `[Ranker] Ranked ${paper.arxivId}: E=${evidenceScore.toFixed(2)}, P=${personalFitScore.toFixed(2)}, final=${finalScore.toFixed(2)}`
   );
 
   return score;

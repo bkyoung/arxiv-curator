@@ -58,18 +58,18 @@ Phase 2 implements the personalization and ranking engine that makes papers pers
   - [ ] Cache velocity scores in `TopicVelocity` table
   - [ ] **Note**: Can defer to Phase 7 if complex, use placeholder 0.5 for now
 
-- [ ] **Signal 4: Personal Fit (P)** - 30% weight
-  - [ ] Implement vector similarity scoring:
-    - [ ] Load user profile embedding vector
-    - [ ] Calculate cosine similarity with paper embedding
-    - [ ] Normalize to 0-1 range
-  - [ ] Implement rule-based bonuses:
-    - [ ] Topic inclusion rules (+0.2 per matched topic)
-    - [ ] Keyword inclusion rules (+0.1 per matched keyword)
-    - [ ] Topic exclusion rules (hard filter, remove from results)
-    - [ ] Keyword exclusion rules (hard filter, remove from results)
-  - [ ] Combine: `P = 0.7 × cosine_similarity + 0.3 × rule_bonuses`
-  - [ ] Test personal fit scoring
+- [x] **Signal 4: Personal Fit (P)** - 30% weight ✅ Day 2 Complete
+  - [x] Implement vector similarity scoring:
+    - [x] Load user profile embedding vector
+    - [x] Calculate cosine similarity with paper embedding (6 tests)
+    - [x] Normalize to 0-1 range
+  - [x] Implement rule-based bonuses:
+    - [x] Topic inclusion rules (+0.2 per matched topic)
+    - [x] Keyword inclusion rules (+0.1 per matched keyword)
+    - [x] Topic exclusion rules (hard filter, remove from results - 11 tests)
+    - [x] Keyword exclusion rules (hard filter, remove from results)
+  - [x] Combine: `P = 0.7 × cosine_similarity + 0.3 × rule_bonuses`
+  - [x] Test personal fit scoring (9 tests)
 
 - [ ] **Signal 5: Lab Prior (L)** - 10% weight
   - [ ] Implement lab boost configuration in `UserProfile`
