@@ -7,34 +7,14 @@
 
 import { Ollama } from 'ollama';
 import type { GenerateSummaryInput, GenerateSummaryOutput } from '../llm';
-
-const SYSTEM_PROMPT = `You are a research paper summarization assistant.
-Your job is to read a paper's title and abstract and generate:
-1. A "What's New" summary (2-3 sentences) explaining the key contribution
-2. A list of 3-5 "Key Points" highlighting specific claims or findings
-
-Be concise, specific, and technical. Focus on novelty and contributions.
-
-Output format (JSON):
-{
-  "whats_new": "2-3 sentence summary here",
-  "key_points": [
-    "First key point",
-    "Second key point",
-    "Third key point"
-  ]
-}`;
-
-function buildPrompt(input: GenerateSummaryInput): string {
-  return `Title: ${input.title}
-
-Authors: ${input.authors.join(', ')}
-
-Abstract:
-${input.abstract}
-
-Generate a concise summary following the output format.`;
-}
+import {
+  SUMMARY_SYSTEM_PROMPT,
+  SUMMARY_TEMPERATURE,
+  SUMMARY_TOP_P,
+  buildSummaryPrompt,
+  validateSummaryResponse,
+  normalizeSummaryResponse,
+} from './shared';
 
 /**
  * Generate summary using Ollama (local LLM)
@@ -54,17 +34,17 @@ export async function generateSummaryOllama(
     messages: [
       {
         role: 'system',
-        content: SYSTEM_PROMPT,
+        content: SUMMARY_SYSTEM_PROMPT,
       },
       {
         role: 'user',
-        content: buildPrompt(input),
+        content: buildSummaryPrompt(input),
       },
     ],
     format: 'json', // Request JSON output
     options: {
-      temperature: 0.3, // Low temperature for consistency
-      top_p: 0.9,
+      temperature: SUMMARY_TEMPERATURE,
+      top_p: SUMMARY_TOP_P,
     },
   });
 
@@ -72,12 +52,9 @@ export async function generateSummaryOllama(
   const parsed = JSON.parse(response.message.content);
 
   // Validate response structure
-  if (!parsed.whats_new || !Array.isArray(parsed.key_points)) {
+  if (!validateSummaryResponse(parsed)) {
     throw new Error('Invalid response structure from Ollama');
   }
 
-  return {
-    whatsNew: parsed.whats_new,
-    keyPoints: parsed.key_points,
-  };
+  return normalizeSummaryResponse(parsed);
 }

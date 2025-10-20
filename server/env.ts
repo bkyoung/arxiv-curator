@@ -25,7 +25,7 @@ const envSchema = z.object({
 
   // AI Services (Phase 1+) - Optional for now
   OPENAI_API_KEY: z.string().optional(),
-  GOOGLE_API_KEY: z.string().optional(),
+  GOOGLE_AI_API_KEY: z.string().optional(),
   OLLAMA_BASE_URL: z.string().url().optional(),
 });
 

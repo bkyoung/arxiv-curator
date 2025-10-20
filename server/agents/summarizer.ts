@@ -126,15 +126,28 @@ export async function generateSummaryForPaper(
     llmOutput.keyPoints
   );
 
-  // Persist to database
-  const summary = await prisma.summary.create({
-    data: {
+  // Persist to database (upsert to handle abstract changes)
+  const summary = await prisma.summary.upsert({
+    where: {
+      paperId_summaryType: {
+        paperId,
+        summaryType: 'skim',
+      },
+    },
+    create: {
       paperId,
       summaryType: 'skim',
       whatsNew: llmOutput.whatsNew,
       keyPoints: llmOutput.keyPoints,
       markdownContent,
       contentHash,
+    },
+    update: {
+      whatsNew: llmOutput.whatsNew,
+      keyPoints: llmOutput.keyPoints,
+      markdownContent,
+      contentHash,
+      generatedAt: new Date(),
     },
   });
 

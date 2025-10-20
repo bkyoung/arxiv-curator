@@ -21,6 +21,7 @@ vi.mock('@/server/db', () => ({
     summary: {
       findFirst: vi.fn(),
       create: vi.fn(),
+      upsert: vi.fn(),
     },
     userProfile: {
       findUnique: vi.fn(),
@@ -112,7 +113,7 @@ describe('Summarizer Agent', () => {
         mockUserProfile as any
       );
       vi.mocked(prisma.summary.findFirst).mockResolvedValue(null); // Cache miss
-      vi.mocked(prisma.summary.create).mockResolvedValue(mockSummary as any);
+      vi.mocked(prisma.summary.upsert).mockResolvedValue(mockSummary as any);
       vi.mocked(generateSummary).mockResolvedValue(mockLLMOutput);
 
       const result = await generateSummaryForPaper('paper-123', 'user-123');
@@ -129,7 +130,7 @@ describe('Summarizer Agent', () => {
         },
         'local' // useLocalLLM = true
       );
-      expect(prisma.summary.create).toHaveBeenCalled();
+      expect(prisma.summary.upsert).toHaveBeenCalled();
       expect(result).toMatchObject({
         whatsNew: mockLLMOutput.whatsNew,
         keyPoints: mockLLMOutput.keyPoints,
@@ -143,7 +144,7 @@ describe('Summarizer Agent', () => {
         cloudProfile as any
       );
       vi.mocked(prisma.summary.findFirst).mockResolvedValue(null);
-      vi.mocked(prisma.summary.create).mockResolvedValue(mockSummary as any);
+      vi.mocked(prisma.summary.upsert).mockResolvedValue(mockSummary as any);
       vi.mocked(generateSummary).mockResolvedValue(mockLLMOutput);
 
       await generateSummaryForPaper('paper-123', 'user-123');
@@ -160,15 +161,15 @@ describe('Summarizer Agent', () => {
         mockUserProfile as any
       );
       vi.mocked(prisma.summary.findFirst).mockResolvedValue(null);
-      vi.mocked(prisma.summary.create).mockResolvedValue(mockSummary as any);
+      vi.mocked(prisma.summary.upsert).mockResolvedValue(mockSummary as any);
       vi.mocked(generateSummary).mockResolvedValue(mockLLMOutput);
 
       await generateSummaryForPaper('paper-123', 'user-123');
 
-      const createCall = vi.mocked(prisma.summary.create).mock.calls[0][0];
-      expect(createCall.data.markdownContent).toContain("## What's New");
-      expect(createCall.data.markdownContent).toContain('## Key Points');
-      expect(createCall.data.markdownContent).toContain(
+      const upsertCall = vi.mocked(prisma.summary.upsert).mock.calls[0][0];
+      expect(upsertCall.create.markdownContent).toContain("## What's New");
+      expect(upsertCall.create.markdownContent).toContain('## Key Points');
+      expect(upsertCall.create.markdownContent).toContain(
         mockLLMOutput.keyPoints[0]
       );
     });
@@ -179,13 +180,14 @@ describe('Summarizer Agent', () => {
         mockUserProfile as any
       );
       vi.mocked(prisma.summary.findFirst).mockResolvedValue(null);
-      vi.mocked(prisma.summary.create).mockResolvedValue(mockSummary as any);
+      vi.mocked(prisma.summary.upsert).mockResolvedValue(mockSummary as any);
       vi.mocked(generateSummary).mockResolvedValue(mockLLMOutput);
 
       await generateSummaryForPaper('paper-123', 'user-123');
 
-      expect(prisma.summary.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
+      expect(prisma.summary.upsert).toHaveBeenCalledWith({
+        where: expect.any(Object),
+        create: expect.objectContaining({
           paperId: 'paper-123',
           summaryType: 'skim',
           whatsNew: mockLLMOutput.whatsNew,
@@ -193,6 +195,7 @@ describe('Summarizer Agent', () => {
           markdownContent: expect.stringContaining("What's New"),
           contentHash: expect.any(String),
         }),
+        update: expect.any(Object),
       });
     });
 
@@ -235,7 +238,7 @@ describe('Summarizer Agent', () => {
         profileWithoutPreference as any
       );
       vi.mocked(prisma.summary.findFirst).mockResolvedValue(null);
-      vi.mocked(prisma.summary.create).mockResolvedValue(mockSummary as any);
+      vi.mocked(prisma.summary.upsert).mockResolvedValue(mockSummary as any);
       vi.mocked(generateSummary).mockResolvedValue(mockLLMOutput);
 
       await generateSummaryForPaper('paper-123', 'user-123');
@@ -249,7 +252,7 @@ describe('Summarizer Agent', () => {
         mockUserProfile as any
       );
       vi.mocked(prisma.summary.findFirst).mockResolvedValue(null);
-      vi.mocked(prisma.summary.create).mockResolvedValue(mockSummary as any);
+      vi.mocked(prisma.summary.upsert).mockResolvedValue(mockSummary as any);
       vi.mocked(generateSummary).mockResolvedValue(mockLLMOutput);
 
       const result = await generateSummaryForPaper('paper-123', 'user-123');
@@ -267,16 +270,16 @@ describe('Summarizer Agent', () => {
         mockUserProfile as any
       );
       vi.mocked(prisma.summary.findFirst).mockResolvedValue(null);
-      vi.mocked(prisma.summary.create).mockResolvedValue(mockSummary as any);
+      vi.mocked(prisma.summary.upsert).mockResolvedValue(mockSummary as any);
       vi.mocked(generateSummary).mockResolvedValue(mockLLMOutput);
 
       await generateSummaryForPaper('paper-123', 'user-123');
 
-      const createCall = vi.mocked(prisma.summary.create).mock.calls[0][0];
+      const upsertCall = vi.mocked(prisma.summary.upsert).mock.calls[0][0];
       const expectedHash = createHash('sha256')
         .update(mockPaper.abstract)
         .digest('hex');
-      expect(createCall.data.contentHash).toBe(expectedHash);
+      expect(upsertCall.create.contentHash).toBe(expectedHash);
     });
 
     it('should handle summaries with empty key points gracefully', async () => {
@@ -297,7 +300,7 @@ describe('Summarizer Agent', () => {
         mockUserProfile as any
       );
       vi.mocked(prisma.summary.findFirst).mockResolvedValue(null);
-      vi.mocked(prisma.summary.create).mockResolvedValue(
+      vi.mocked(prisma.summary.upsert).mockResolvedValue(
         summaryWithEmptyKeyPoints as any
       );
       vi.mocked(generateSummary).mockResolvedValue(emptyKeyPointsOutput);
@@ -319,7 +322,7 @@ describe('Summarizer Agent', () => {
         mockUserProfile as any
       );
       vi.mocked(prisma.summary.findFirst).mockResolvedValue(null);
-      vi.mocked(prisma.summary.create).mockResolvedValue(mockSummary as any);
+      vi.mocked(prisma.summary.upsert).mockResolvedValue(mockSummary as any);
       vi.mocked(generateSummary).mockResolvedValue(mockLLMOutput);
 
       await generateSummaryForPaper('paper-123', 'user-123');
@@ -346,7 +349,7 @@ describe('Summarizer Agent', () => {
 
       expect(prisma.summary.findFirst).toHaveBeenCalled();
       expect(generateSummary).not.toHaveBeenCalled(); // Should NOT call LLM
-      expect(prisma.summary.create).not.toHaveBeenCalled(); // Should NOT create new
+      expect(prisma.summary.upsert).not.toHaveBeenCalled(); // Should NOT create new
       expect(result).toMatchObject({
         whatsNew: mockSummary.whatsNew,
         keyPoints: mockSummary.keyPoints,
@@ -386,13 +389,13 @@ describe('Summarizer Agent', () => {
         mockUserProfile as any
       );
       vi.mocked(prisma.summary.findFirst).mockResolvedValue(null); // Cache miss (hash mismatch)
-      vi.mocked(prisma.summary.create).mockResolvedValue(mockSummary as any);
+      vi.mocked(prisma.summary.upsert).mockResolvedValue(mockSummary as any);
       vi.mocked(generateSummary).mockResolvedValue(mockLLMOutput);
 
       await generateSummaryForPaper('paper-123', 'user-123');
 
       expect(generateSummary).toHaveBeenCalled(); // Should call LLM
-      expect(prisma.summary.create).toHaveBeenCalled(); // Should create new
+      expect(prisma.summary.upsert).toHaveBeenCalled(); // Should create new
     });
 
     it('should reuse cache across different users', async () => {

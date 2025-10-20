@@ -38,6 +38,12 @@ vi.mock('@/server/db', () => ({
       }),
 
       delete: vi.fn(async ({ where }) => {
+        const key = `${where.paperId_summaryType.paperId}-${where.paperId_summaryType.summaryType}`;
+        mockPrismaSummaries.delete(key);
+        return { count: 1 };
+      }),
+
+      deleteMany: vi.fn(async ({ where }) => {
         const key = `${where.paperId}-${where.summaryType}`;
         mockPrismaSummaries.delete(key);
         return { count: 1 };
@@ -180,7 +186,7 @@ describe('Summaries Router', () => {
       const caller = summariesRouter.createCaller({ user: null });
 
       await expect(caller.getSummary({ paperId: 'paper-123' })).rejects.toThrow(
-        'Must be logged in'
+        'Authentication required'
       );
     });
 
@@ -264,7 +270,7 @@ describe('Summaries Router', () => {
 
       await expect(
         caller.regenerateSummary({ paperId: 'paper-123' })
-      ).rejects.toThrow('Must be logged in');
+      ).rejects.toThrow('Authentication required');
     });
   });
 });

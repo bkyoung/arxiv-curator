@@ -7,36 +7,13 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { GenerateSummaryInput, GenerateSummaryOutput } from '../llm';
-
-const SYSTEM_PROMPT = `You are a research paper summarization assistant.
-Your job is to read a paper's title and abstract and generate:
-1. A "What's New" summary (2-3 sentences) explaining the key contribution
-2. A list of 3-5 "Key Points" highlighting specific claims or findings
-
-Be concise, specific, and technical. Focus on novelty and contributions.
-
-Output format (JSON):
-{
-  "whats_new": "2-3 sentence summary here",
-  "key_points": [
-    "First key point",
-    "Second key point",
-    "Third key point"
-  ]
-}`;
-
-function buildPrompt(input: GenerateSummaryInput): string {
-  return `${SYSTEM_PROMPT}
-
-Title: ${input.title}
-
-Authors: ${input.authors.join(', ')}
-
-Abstract:
-${input.abstract}
-
-Generate a concise summary following the output format.`;
-}
+import {
+  SUMMARY_SYSTEM_PROMPT,
+  SUMMARY_TEMPERATURE,
+  buildSummaryPrompt,
+  validateSummaryResponse,
+  normalizeSummaryResponse,
+} from './shared';
 
 /**
  * Generate summary using Google Gemini (cloud LLM)
@@ -48,34 +25,34 @@ export async function generateSummaryGemini(
   input: GenerateSummaryInput
 ): Promise<GenerateSummaryOutput> {
   const apiKey = process.env.GOOGLE_AI_API_KEY;
-
   if (!apiKey) {
     throw new Error('GOOGLE_AI_API_KEY environment variable is not set');
   }
 
   const genAI = new GoogleGenerativeAI(apiKey);
-
   const model = genAI.getGenerativeModel({
     model: 'gemini-2.5-flash',
     generationConfig: {
       responseMimeType: 'application/json',
-      temperature: 0.3,
+      temperature: SUMMARY_TEMPERATURE,
     },
   });
 
-  const result = await model.generateContent(buildPrompt(input));
+  // Gemini doesn't support separate system messages, so combine system prompt with user prompt
+  const fullPrompt = `${SUMMARY_SYSTEM_PROMPT}
+
+${buildSummaryPrompt(input)}`;
+
+  const result = await model.generateContent(fullPrompt);
   const response = result.response;
 
   // Parse JSON response
   const parsed = JSON.parse(response.text());
 
   // Validate response structure
-  if (!parsed.whats_new || !Array.isArray(parsed.key_points)) {
+  if (!validateSummaryResponse(parsed)) {
     throw new Error('Invalid response structure from Gemini');
   }
 
-  return {
-    whatsNew: parsed.whats_new,
-    keyPoints: parsed.key_points,
-  };
+  return normalizeSummaryResponse(parsed);
 }
