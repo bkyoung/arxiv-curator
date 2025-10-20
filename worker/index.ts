@@ -4,14 +4,30 @@
  * Processes background jobs for paper ingestion and enrichment
  */
 
-// Load environment variables from .env.local
+// Load environment variables from .env.local BEFORE any other imports
+// This MUST be the very first import to ensure env vars are available
 import { config } from 'dotenv';
 import { resolve } from 'path';
 
+const envLocalPath = resolve(process.cwd(), '.env.local');
+const envPath = resolve(process.cwd(), '.env');
+
 // Load .env.local first (overrides .env)
-config({ path: resolve(process.cwd(), '.env.local') });
+const resultLocal = config({ path: envLocalPath });
 // Then load .env
-config({ path: resolve(process.cwd(), '.env') });
+const resultEnv = config({ path: envPath });
+
+// Debug: Verify environment variables are loaded
+if (!process.env.DATABASE_URL) {
+  console.error('[Worker] ERROR: DATABASE_URL not found after loading .env files');
+  console.error('[Worker] .env.local path:', envLocalPath);
+  console.error('[Worker] .env.local loaded:', !resultLocal.error);
+  console.error('[Worker] .env path:', envPath);
+  console.error('[Worker] .env loaded:', !resultEnv.error);
+  if (resultLocal.error) console.error('[Worker] .env.local error:', resultLocal.error);
+  if (resultEnv.error) console.error('[Worker] .env error:', resultEnv.error);
+  process.exit(1);
+}
 
 import { startQueue, boss } from '@/server/queue';
 import { scoutEnrichWorkflow } from './workflows/scout-enrich';
@@ -43,6 +59,13 @@ async function main() {
     // Start pg-boss queue
     await startQueue();
     console.log('[Worker] Queue started');
+
+    // Create queues explicitly (required in pg-boss v11+)
+    // Queues must exist before workers can register or jobs can be sent
+    await boss.createQueue('scout-papers');
+    await boss.createQueue('enrich-paper');
+    await boss.createQueue('generate-daily-digests');
+    console.log('[Worker] Queues created');
 
     // Register job handler: scout-papers
     await boss.work<ScoutPapersJob>('scout-papers', async (jobs) => {
@@ -117,16 +140,6 @@ async function main() {
       return { success: true };
     });
 
-    // Schedule daily digest generation at 6:30 AM (after arXiv's 6:00 AM update)
-    await boss.schedule(
-      'generate-daily-digests',
-      '30 6 * * *', // Cron: 6:30 AM every day
-      {},
-      { tz: 'America/New_York' } // arXiv's timezone
-    );
-
-    console.log('[Worker] Daily digest job scheduled for 6:30 AM ET');
-
     // Register job handler: generate-daily-digests
     await boss.work('generate-daily-digests', async (jobs) => {
       const jobArray = Array.isArray(jobs) ? jobs : [jobs];
@@ -161,6 +174,21 @@ async function main() {
       return { success: true };
     });
 
+    // Schedule daily digest generation at 6:30 AM (after arXiv's 6:00 AM update)
+    // Note: Schedule AFTER registering work handler to ensure queue exists
+    // First unschedule any existing schedule to avoid conflicts
+    await boss.unschedule('generate-daily-digests').catch(() => {
+      // Ignore error if schedule doesn't exist
+    });
+
+    await boss.schedule(
+      'generate-daily-digests',
+      '30 6 * * *', // Cron: 6:30 AM every day
+      {},
+      { tz: 'America/New_York' } // arXiv's timezone
+    );
+
+    console.log('[Worker] Daily digest job scheduled for 6:30 AM ET');
     console.log('[Worker] Ready. Waiting for jobs...');
 
     // Keep process running
