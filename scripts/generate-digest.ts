@@ -1,0 +1,40 @@
+#!/usr/bin/env tsx
+/**
+ * Generate Digest Script
+ *
+ * Manually triggers digest generation for all users
+ */
+
+import { boss, startQueue } from '../server/queue';
+
+async function generateDigest() {
+  console.log('📰 Generating daily digest...\n');
+
+  try {
+    // Start pg-boss
+    await startQueue();
+    console.log('✓ Queue started');
+
+    // Enqueue generate-daily-digests job
+    const jobId = await boss.send('generate-daily-digests', {});
+
+    console.log(`✓ Enqueued generate-daily-digests job: ${jobId}`);
+    console.log('');
+    console.log('⏳ Processing will happen in the worker...');
+    console.log('   Watch the worker terminal for progress.');
+    console.log('');
+    console.log('💡 This will:');
+    console.log('   1. Load all users from database');
+    console.log('   2. Run Recommender agent for each user');
+    console.log('   3. Create Briefing with top papers');
+    console.log('');
+
+    await boss.stop();
+    process.exit(0);
+  } catch (error) {
+    console.error('❌ Error generating digest:', error);
+    process.exit(1);
+  }
+}
+
+generateDigest();
