@@ -15,6 +15,7 @@ import { ExternalLink } from 'lucide-react';
 import { FeedbackActions } from '@/components/FeedbackActions';
 import { ScoreBreakdown } from '@/components/ScoreBreakdown';
 import { WhyShown } from '@/components/WhyShown';
+import { SummaryPanel } from '@/components/SummaryPanel';
 import { BriefingPaper } from '@/types/briefing';
 import { getEvidenceBadges } from '@/lib/paper-helpers';
 
@@ -110,6 +111,9 @@ export function PaperDetailView({ paper, onSave, onDismiss, onThumbsUp, onThumbs
             </CardContent>
           </Card>
         )}
+
+        {/* AI Summary */}
+        <SummaryPanel paperId={paper.id} />
 
         <Separator />
 

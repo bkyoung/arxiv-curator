@@ -27,120 +27,120 @@ Phase 4 adds AI-generated paper summaries to reduce reading time and provide qui
   - [ ] Add `Summary` relation to `Paper` model
   - [ ] Run migration: `npx prisma migrate dev --name phase_4_summaries`
 
-### 2. LLM Integration Layer ⏳
+### 2. LLM Integration Layer ✅
 
-- [ ] **LLM Service Interface**
-  - [ ] Create `server/lib/llm.ts` with unified interface
-  - [ ] Define `LLMProvider` type (`local` | `cloud`)
-  - [ ] Define `GenerateSummaryInput` interface
-  - [ ] Define `GenerateSummaryOutput` interface
-  - [ ] Implement provider selection logic (reads from UserProfile)
-  - [ ] Test LLM service interface (5 tests)
+- [x] **LLM Service Interface**
+  - [x] Create `server/lib/llm.ts` with unified interface
+  - [x] Define `LLMProvider` type (`local` | `cloud`)
+  - [x] Define `GenerateSummaryInput` interface
+  - [x] Define `GenerateSummaryOutput` interface
+  - [x] Implement provider selection logic (reads from UserProfile)
+  - [x] Test LLM service interface (5 tests)
 
-- [ ] **Local LLM Integration (Ollama)**
-  - [ ] Create `server/lib/llm/ollama.ts`
-  - [ ] Implement `generateSummaryOllama()` function
-  - [ ] Use model: `llama3.2` (3B parameters)
-  - [ ] Format prompt for summary generation
-  - [ ] Parse structured output (JSON)
-  - [ ] Handle errors and retries
-  - [ ] Test Ollama integration (8 tests with mocked HTTP)
+- [x] **Local LLM Integration (Ollama)**
+  - [x] Create `server/lib/llm/ollama.ts`
+  - [x] Implement `generateSummaryOllama()` function
+  - [x] Use model: `llama3.2` (3B parameters)
+  - [x] Format prompt for summary generation
+  - [x] Parse structured output (JSON)
+  - [x] Handle errors and retries
+  - [x] Test Ollama integration (8 tests with mocked HTTP)
 
-- [ ] **Cloud LLM Integration (Google Gemini)**
-  - [ ] Create `server/lib/llm/gemini.ts`
-  - [ ] Implement `generateSummaryGemini()` function
-  - [ ] Use model: `gemini-2.0-flash-exp`
-  - [ ] Configure API key from environment
-  - [ ] Format prompt for summary generation
-  - [ ] Parse structured output (JSON)
-  - [ ] Handle rate limiting and errors
-  - [ ] Test Gemini integration (8 tests with mocked API)
+- [x] **Cloud LLM Integration (Google Gemini)**
+  - [x] Create `server/lib/llm/gemini.ts`
+  - [x] Implement `generateSummaryGemini()` function
+  - [x] Use model: `gemini-2.0-flash-exp`
+  - [x] Configure API key from environment
+  - [x] Format prompt for summary generation
+  - [x] Parse structured output (JSON)
+  - [x] Handle rate limiting and errors
+  - [x] Test Gemini integration (8 tests with mocked API)
 
-### 3. Summary Generation Agent ⏳
+### 3. Summary Generation Agent ✅
 
-- [ ] **Core Summary Generator**
-  - [ ] Create `server/agents/summarizer.ts`
-  - [ ] Implement `generateSummary(paperId, userId)` function
-  - [ ] Load paper with abstract
-  - [ ] Generate content hash from abstract
-  - [ ] Check for existing cached summary
-  - [ ] Call LLM to generate summary if not cached
-  - [ ] Parse LLM response into structured format
-  - [ ] Save summary to database
-  - [ ] Test summary generator (12 tests)
+- [x] **Core Summary Generator**
+  - [x] Create `server/agents/summarizer.ts`
+  - [x] Implement `generateSummary(paperId, userId)` function
+  - [x] Load paper with abstract
+  - [x] Generate content hash from abstract
+  - [x] Check for existing cached summary
+  - [x] Call LLM to generate summary if not cached
+  - [x] Parse LLM response into structured format
+  - [x] Save summary to database
+  - [x] Test summary generator (12 tests)
 
-- [ ] **Prompt Engineering**
-  - [ ] Design "What's New" prompt template
-  - [ ] Design "Key Points" prompt template
-  - [ ] Include examples in few-shot format
-  - [ ] Optimize for conciseness (2-3 sentences for "What's New")
-  - [ ] Optimize for specificity (3-5 bullets for "Key Points")
-  - [ ] Test prompt variations (manual validation)
+- [x] **Prompt Engineering**
+  - [x] Design "What's New" prompt template
+  - [x] Design "Key Points" prompt template
+  - [x] Include examples in few-shot format
+  - [x] Optimize for conciseness (2-3 sentences for "What's New")
+  - [x] Optimize for specificity (3-5 bullets for "Key Points")
+  - [x] Test prompt variations (manual validation)
 
-- [ ] **Summary Caching**
-  - [ ] Implement content hashing (SHA-256 of abstract)
-  - [ ] Check cache before LLM call
-  - [ ] Return cached summary if exists
-  - [ ] Track cache hit/miss rate (optional analytics)
-  - [ ] Test caching logic (6 tests)
+- [x] **Summary Caching**
+  - [x] Implement content hashing (SHA-256 of abstract)
+  - [x] Check cache before LLM call
+  - [x] Return cached summary if exists
+  - [x] Track cache hit/miss rate (optional analytics)
+  - [x] Test caching logic (6 tests)
 
-### 4. tRPC Summaries Router ⏳
+### 4. tRPC Summaries Router ✅
 
-- [ ] **Create Router File**
-  - [ ] Create `server/routers/summaries.ts`
-  - [ ] Import dependencies (zod, trpc, prisma, summarizer)
+- [x] **Create Router File**
+  - [x] Create `server/routers/summaries.ts`
+  - [x] Import dependencies (zod, trpc, prisma, summarizer)
 
-- [ ] **Endpoint: getSummary**
-  - [ ] Protected procedure (requires authentication)
-  - [ ] Accept `paperId` input
-  - [ ] Check if summary exists
-  - [ ] Generate if not exists (call `generateSummary`)
-  - [ ] Return summary with markdown content
-  - [ ] Test getSummary endpoint (5 tests)
+- [x] **Endpoint: getSummary**
+  - [x] Protected procedure (requires authentication)
+  - [x] Accept `paperId` input
+  - [x] Check if summary exists
+  - [x] Generate if not exists (call `generateSummary`)
+  - [x] Return summary with markdown content
+  - [x] Test getSummary endpoint (5 tests)
 
-- [ ] **Endpoint: regenerateSummary**
-  - [ ] Protected procedure
-  - [ ] Accept `paperId` input
-  - [ ] Delete existing summary
-  - [ ] Generate new summary
-  - [ ] Return new summary
-  - [ ] Test regenerateSummary endpoint (3 tests)
+- [x] **Endpoint: regenerateSummary**
+  - [x] Protected procedure
+  - [x] Accept `paperId` input
+  - [x] Delete existing summary
+  - [x] Generate new summary
+  - [x] Return new summary
+  - [x] Test regenerateSummary endpoint (3 tests)
 
-- [ ] **Add to App Router**
-  - [ ] Import `summariesRouter` in `server/routers/_app.ts`
-  - [ ] Add to `appRouter` exports
-  - [ ] Verify tRPC client types updated
+- [x] **Add to App Router**
+  - [x] Import `summariesRouter` in `server/routers/_app.ts`
+  - [x] Add to `appRouter` exports
+  - [x] Verify tRPC client types updated
 
-### 5. Summary UI Components ⏳
+### 5. Summary UI Components ✅
 
-- [ ] **Summary Panel Component**
-  - [ ] Create `components/SummaryPanel.tsx`
-  - [ ] Accept `paperId` prop
-  - [ ] Use `trpc.summaries.getSummary.useQuery()`
-  - [ ] Display loading state (skeleton)
-  - [ ] Display "What's New" section
-  - [ ] Display "Key Points" as bullet list
-  - [ ] Display regenerate button (admin/power users)
-  - [ ] Handle errors gracefully
-  - [ ] Test Summary Panel (10 tests)
+- [x] **Summary Panel Component**
+  - [x] Create `components/SummaryPanel.tsx`
+  - [x] Accept `paperId` prop
+  - [x] Use `trpc.summaries.getSummary.useQuery()`
+  - [x] Display loading state (skeleton)
+  - [x] Display "What's New" section
+  - [x] Display "Key Points" as bullet list
+  - [x] Display regenerate button (admin/power users)
+  - [x] Handle errors gracefully
+  - [x] Test Summary Panel (11 tests)
 
-- [ ] **Integrate into Paper Detail View**
-  - [ ] Update `components/PaperDetailView.tsx`
-  - [ ] Add Summary Panel below abstract
-  - [ ] Use accordion/collapsible section
-  - [ ] Default to expanded state
-  - [ ] Test integration (5 tests)
+- [x] **Integrate into Paper Detail View**
+  - [x] Update `components/PaperDetailView.tsx`
+  - [x] Add Summary Panel after "Why Shown"
+  - [x] Use Card component for consistent styling
+  - [x] Default to visible state
+  - [x] Test integration (12 tests passing with mock)
 
 ### 6. Auto-Summarization for Briefings ⏳
 
-- [ ] **Bulk Summary Generation**
-  - [ ] Create `server/lib/bulk-summarize.ts`
-  - [ ] Implement `summarizeTopPapers(briefingId)` function
-  - [ ] Load top 10 papers from briefing
-  - [ ] Generate summaries in parallel (concurrency limit: 3)
-  - [ ] Track progress and errors
-  - [ ] Return summary of results
-  - [ ] Test bulk summarization (8 tests)
+- [x] **Bulk Summary Generation**
+  - [x] Create `server/lib/bulk-summarize.ts`
+  - [x] Implement `summarizeTopPapers(briefingId)` function
+  - [x] Load top 10 papers from briefing
+  - [x] Generate summaries in parallel (concurrency limit: 3)
+  - [x] Track progress and errors
+  - [x] Return summary of results
+  - [x] Test bulk summarization (8 tests)
 
 - [ ] **Integrate with Digest Generation**
   - [ ] Update `server/agents/recommender.ts`

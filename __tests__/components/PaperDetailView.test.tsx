@@ -31,6 +31,13 @@ vi.mock('@/components/WhyShown', () => ({
   ),
 }));
 
+// Mock SummaryPanel component
+vi.mock('@/components/SummaryPanel', () => ({
+  SummaryPanel: ({ paperId }: any) => (
+    <div data-testid="summary-panel">Summary for {paperId}</div>
+  ),
+}));
+
 const mockPaper = {
   id: 'paper-1',
   arxivId: '2401.12345',

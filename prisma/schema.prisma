@@ -246,16 +246,19 @@ model Summary {
   id      String @id @default(cuid())
   paperId String
 
-  summaryType     String // "skim", "medium", "deep"
+  summaryType     String @default("skim") // "skim", "medium", "deep"
   whatsNew        String
   keyPoints       String[]
   markdownContent String   @db.Text
+  contentHash     String // SHA-256 hash of abstract for caching
 
   generatedAt DateTime @default(now())
 
   paper Paper @relation(fields: [paperId], references: [id], onDelete: Cascade)
 
-  @@index([paperId, summaryType])
+  @@unique([paperId, summaryType])
+  @@index([paperId])
+  @@index([contentHash])
 }
 
 // ===========================
