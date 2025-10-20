@@ -29,11 +29,9 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
-import { startQueue, boss } from '@/server/queue';
-import { scoutEnrichWorkflow } from './workflows/scout-enrich';
-import { enrichPaper } from '@/server/agents/enricher';
-import { generateDailyDigestsJob } from './jobs/generate-daily-digests';
-import { prisma } from '@/server/db';
+// IMPORTANT: Use dynamic imports to prevent module loading before dotenv config runs
+// Static imports are hoisted and execute before any code, including dotenv
+// Dynamic imports delay module loading until after environment variables are set
 
 /**
  * Job data interfaces
@@ -56,6 +54,13 @@ async function main() {
   console.log('[Worker] Starting worker process...');
 
   try {
+    // Dynamic imports to ensure env vars are loaded first
+    const { startQueue, boss } = await import('@/server/queue');
+    const { scoutEnrichWorkflow } = await import('./workflows/scout-enrich');
+    const { enrichPaper } = await import('@/server/agents/enricher');
+    const { generateDailyDigestsJob } = await import('./jobs/generate-daily-digests');
+    const { prisma } = await import('@/server/db');
+
     // Start pg-boss queue
     await startQueue();
     console.log('[Worker] Queue started');
