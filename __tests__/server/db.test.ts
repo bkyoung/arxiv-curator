@@ -23,6 +23,11 @@ describe('Database Connection', () => {
   });
 
   it('should be able to create and read a User', async () => {
+    // Cleanup any existing test user first (for idempotent tests)
+    await prisma.user.deleteMany({
+      where: { email: 'test@example.com' },
+    });
+
     // Create a test user
     const user = await prisma.user.create({
       data: {
