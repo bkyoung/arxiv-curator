@@ -84,8 +84,8 @@ Stream D: Summaries (Actually can start after Phase 1!)
 | 1 | Foundation | PostgreSQL + pgvector, Prisma schema, NextAuth, pg-boss, tRPC | ✅ Complete |
 | 2 | Ingestion & Enrichment | Scout Agent, arXiv OAI-PMH/Atom parsing, rate limiting, enrichment, UI | ✅ Complete |
 | 3 | Personalization | Ranker Agent, rules engine, vector profiles, feedback system | ✅ Complete |
-| 4 | Briefings & UI | Recommender Agent, three-pane layout, paper cards, hotkeys, digest generation | 🚧 In Progress (Day 3/5 Complete) |
-| 5 | Summaries | Summary generation (skim), LLM integration (local + cloud), summary UI |
+| 4 | Briefings & UI | Recommender Agent, three-pane layout, paper cards, hotkeys, digest generation | ✅ Complete |
+| 5 | Summaries | Summary generation (skim), LLM integration (local + cloud), summary UI | 🚧 In Progress (Day 1/5) |
 | 6-7 | Critical Analysis | PDF parsing, Analyst Agent (Depths A/B/C), critique UI, job status tracking |
 | 8 | Collections | Notebooks CRUD, Synthesizer Agent, export (Markdown/PDF/NotebookLM) |
 | 9 | Trends | Topic velocity, emerging topics, SOTA board, technique graphs, visualizations |
