@@ -10,12 +10,13 @@ import { ZodError } from 'zod';
 export const createTRPCContext = async (opts: FetchCreateContextFnOptions) => {
   return {
     headers: opts.req.headers,
-    // Mock user for development - will be replaced with real auth in future phase
+    // Mock user for development - matches test user created in database
+    // This will be replaced with real auth session when authentication is implemented
     user: {
-      id: 'user-1',
-      email: 'test@test.com',
+      id: 'test-user-1',
+      email: 'test@example.com',
     },
-    // Session will be added here in Phase 1:
+    // Session will be added here when auth is implemented:
     // session: await getServerSession(authOptions),
   };
 };
