@@ -24,6 +24,11 @@ export function selectDiversePapers(
     return candidates;
   }
 
+  // If user vector is empty or invalid, just return first N candidates
+  if (!userVector || userVector.length === 0) {
+    return candidates.slice(0, count);
+  }
+
   const selected: PaperWithScoreAndEnriched[] = [];
   const remaining = [...candidates];
 
@@ -37,6 +42,11 @@ export function selectDiversePapers(
       const embedding = Array.isArray(paper.enriched.embedding)
         ? paper.enriched.embedding
         : JSON.parse(paper.enriched.embedding as any);
+
+      // Check vector lengths match
+      if (embedding.length !== userVector.length) {
+        return { paper, diversity: 0.5 }; // Default diversity if dimensions don't match
+      }
 
       const similarity = cosineSimilarity(embedding, userVector);
       const diversity = 1 - Math.abs(similarity); // More orthogonal = more diverse
