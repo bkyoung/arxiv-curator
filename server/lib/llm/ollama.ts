@@ -1,7 +1,7 @@
 /**
  * Ollama LLM Integration
  *
- * Local LLM integration using Ollama (llama3.2)
+ * Local LLM integration using Ollama (gemma3:27b)
  * Phase 4: Summaries
  */
 
@@ -50,7 +50,7 @@ export async function generateSummaryOllama(
   });
 
   const response = await ollama.chat({
-    model: 'llama3.2',
+    model: 'gemma3:27b',
     messages: [
       {
         role: 'system',

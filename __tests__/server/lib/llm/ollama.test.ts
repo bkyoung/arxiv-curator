@@ -1,7 +1,7 @@
 /**
  * Ollama LLM Integration Tests
  *
- * Tests for local LLM integration using Ollama (llama3.2)
+ * Tests for local LLM integration using Ollama (gemma3:27b)
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -54,7 +54,7 @@ describe('Ollama LLM Integration', () => {
 
       expect(mockChat).toHaveBeenCalledWith(
         expect.objectContaining({
-          model: 'llama3.2',
+          model: 'gemma3:27b',
           format: 'json',
           options: expect.objectContaining({
             temperature: 0.3,

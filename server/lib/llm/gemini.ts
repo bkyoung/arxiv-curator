@@ -1,7 +1,7 @@
 /**
  * Google Gemini LLM Integration
  *
- * Cloud LLM integration using Google Gemini (gemini-2.0-flash-exp)
+ * Cloud LLM integration using Google Gemini (gemini-2.5-flash)
  * Phase 4: Summaries
  */
 
@@ -56,7 +56,7 @@ export async function generateSummaryGemini(
   const genAI = new GoogleGenerativeAI(apiKey);
 
   const model = genAI.getGenerativeModel({
-    model: 'gemini-2.0-flash-exp',
+    model: 'gemini-2.5-flash',
     generationConfig: {
       responseMimeType: 'application/json',
       temperature: 0.3,

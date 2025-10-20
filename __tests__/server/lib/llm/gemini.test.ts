@@ -1,7 +1,7 @@
 /**
  * Google Gemini LLM Integration Tests
  *
- * Tests for cloud LLM integration using Google Gemini (2.0-flash-exp)
+ * Tests for cloud LLM integration using Google Gemini (2.5-flash)
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -66,7 +66,7 @@ describe('Gemini LLM Integration', () => {
       process.env.GOOGLE_AI_API_KEY = originalEnv;
     });
 
-    it('should use gemini-2.0-flash-exp model', async () => {
+    it('should use gemini-2.5-flash model', async () => {
       mockGenerateContent.mockResolvedValue({
         response: {
           text: () =>
@@ -81,7 +81,7 @@ describe('Gemini LLM Integration', () => {
 
       expect(mockGetGenerativeModel).toHaveBeenCalledWith(
         expect.objectContaining({
-          model: 'gemini-2.0-flash-exp',
+          model: 'gemini-2.5-flash',
         })
       );
     });

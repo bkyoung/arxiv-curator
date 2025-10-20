@@ -14,8 +14,8 @@ Phase 4 delivered AI-generated paper summaries with dual LLM support (local and 
 ### 1. LLM Integration Layer (Day 1)
 **Files Created**:
 - `server/lib/llm.ts` - Unified LLM interface
-- `server/lib/llm/ollama.ts` - Local LLM (llama3.2)
-- `server/lib/llm/gemini.ts` - Cloud LLM (gemini-2.0-flash-exp)
+- `server/lib/llm/ollama.ts` - Local LLM (gemma3:27b)
+- `server/lib/llm/gemini.ts` - Cloud LLM (gemini-2.5-flash)
 
 **Features**:
 - Provider abstraction (local vs cloud)
@@ -137,8 +137,8 @@ model Summary {
 
 ### Response Times
 - **Cache Hit**: <50ms (database lookup)
-- **Cache Miss (Local)**: 2-5 seconds (llama3.2)
-- **Cache Miss (Cloud)**: 1-3 seconds (Gemini 2.0 Flash)
+- **Cache Miss (Local)**: 3-8 seconds (gemma3:27b)
+- **Cache Miss (Cloud)**: 1-3 seconds (Gemini 2.5 Flash)
 
 ## API Endpoints
 
@@ -228,8 +228,8 @@ Output: SummaryResult
    - Alternative: Use arxivId+version (rejected - misses duplicate abstracts)
 
 2. **Why two LLM providers?**
-   - Local (Ollama): Privacy, cost-free, works offline
-   - Cloud (Gemini): Faster, higher quality, requires API key
+   - Local (Ollama/gemma3:27b): Privacy, cost-free, works offline, good quality
+   - Cloud (Gemini 2.5 Flash): Faster, higher quality, requires API key
    - User choice maximizes flexibility
 
 3. **Why concurrency limit of 3?**

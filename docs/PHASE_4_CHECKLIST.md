@@ -40,7 +40,7 @@ Phase 4 adds AI-generated paper summaries to reduce reading time and provide qui
 - [x] **Local LLM Integration (Ollama)**
   - [x] Create `server/lib/llm/ollama.ts`
   - [x] Implement `generateSummaryOllama()` function
-  - [x] Use model: `llama3.2` (3B parameters)
+  - [x] Use model: `gemma3:27b` (27B parameters)
   - [x] Format prompt for summary generation
   - [x] Parse structured output (JSON)
   - [x] Handle errors and retries
@@ -49,7 +49,7 @@ Phase 4 adds AI-generated paper summaries to reduce reading time and provide qui
 - [x] **Cloud LLM Integration (Google Gemini)**
   - [x] Create `server/lib/llm/gemini.ts`
   - [x] Implement `generateSummaryGemini()` function
-  - [x] Use model: `gemini-2.0-flash-exp`
+  - [x] Use model: `gemini-2.5-flash`
   - [x] Configure API key from environment
   - [x] Format prompt for summary generation
   - [x] Parse structured output (JSON)
