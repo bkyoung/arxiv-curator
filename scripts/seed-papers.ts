@@ -14,9 +14,12 @@ config({ path: resolve(process.cwd(), '.env.local') });
 // Then load .env
 config({ path: resolve(process.cwd(), '.env') });
 
-import { boss, startQueue } from '../server/queue';
+// IMPORTANT: Use dynamic imports to prevent module loading before dotenv config runs
+// Static imports are hoisted and execute before any code, including dotenv
 
 async function seedPapers() {
+  // Dynamic imports to ensure env vars are loaded first
+  const { boss, startQueue } = await import('../server/queue');
   console.log('🌱 Seeding papers from arXiv...\n');
 
   try {
