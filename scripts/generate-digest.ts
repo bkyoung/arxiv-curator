@@ -5,6 +5,15 @@
  * Manually triggers digest generation for all users
  */
 
+// Load environment variables from .env.local
+import { config } from 'dotenv';
+import { resolve } from 'path';
+
+// Load .env.local first (overrides .env)
+config({ path: resolve(process.cwd(), '.env.local') });
+// Then load .env
+config({ path: resolve(process.cwd(), '.env') });
+
 import { boss, startQueue } from '../server/queue';
 
 async function generateDigest() {

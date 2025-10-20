@@ -2,6 +2,24 @@
 
 Utility scripts for manual operations and testing.
 
+## Setup
+
+Before running any scripts, make sure you have a `.env.local` file configured:
+
+```bash
+# Copy the example file
+cp .env.local.example .env.local
+
+# Edit with your actual values
+nano .env.local
+```
+
+**Required variables**:
+- `DATABASE_URL` - PostgreSQL connection string
+- `MINIO_ACCESS_KEY` - MinIO/S3 access key
+- `MINIO_SECRET_KEY` - MinIO/S3 secret key
+- `AUTH_SECRET` - NextAuth secret (generate with `openssl rand -base64 32`)
+
 ## Available Scripts
 
 ### `seed-papers.ts`

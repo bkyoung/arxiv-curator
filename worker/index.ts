@@ -4,6 +4,15 @@
  * Processes background jobs for paper ingestion and enrichment
  */
 
+// Load environment variables from .env.local
+import { config } from 'dotenv';
+import { resolve } from 'path';
+
+// Load .env.local first (overrides .env)
+config({ path: resolve(process.cwd(), '.env.local') });
+// Then load .env
+config({ path: resolve(process.cwd(), '.env') });
+
 import { startQueue, boss } from '@/server/queue';
 import { scoutEnrichWorkflow } from './workflows/scout-enrich';
 import { enrichPaper } from '@/server/agents/enricher';

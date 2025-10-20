@@ -4,14 +4,43 @@ Complete guide to manually test the arXiv Curator application from scratch.
 
 ## Prerequisites
 
-### 1. Database Setup
+### 1. Environment Configuration
+
+**Create `.env.local` file**:
+```bash
+# Copy the example file
+cp .env.local.example .env.local
+
+# Edit with your actual values
+nano .env.local
+```
+
+**Required variables**:
+```bash
+DATABASE_URL="postgresql://username:password@localhost:5432/arxiv_curator"
+MINIO_ACCESS_KEY="minioadmin"
+MINIO_SECRET_KEY="minioadmin"
+AUTH_SECRET="your-secret-here"  # Generate: openssl rand -base64 32
+NEXTAUTH_URL="http://localhost:3000"
+```
+
+**Optional (for OAuth)**:
+```bash
+GITHUB_ID="..."
+GITHUB_SECRET="..."
+# or
+GOOGLE_CLIENT_ID="..."
+GOOGLE_CLIENT_SECRET="..."
+```
+
+### 2. Database Setup
 ```bash
 # Make sure PostgreSQL is running
 # Database should be created and migrated
 npx prisma db push
 ```
 
-### 2. LLM Setup (Optional but Recommended)
+### 3. LLM Setup (Optional but Recommended)
 
 **For Local LLM (Privacy + Free)**:
 ```bash
@@ -31,7 +60,7 @@ ollama pull gemma3:27b
 GOOGLE_AI_API_KEY=your_api_key_here
 ```
 
-### 3. Authentication
+### 4. Authentication
 Make sure you have NextAuth configured with at least one provider (GitHub, Google, etc.)
 
 ---
