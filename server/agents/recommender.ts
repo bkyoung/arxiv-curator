@@ -94,7 +94,7 @@ export async function generateDailyDigest(userId: string) {
   const papers = await prisma.paper.findMany({
     where: {
       pubDate: { gte: yesterday },
-      status: 'enriched',
+      status: 'ranked', // Papers are 'ranked' after scoring, not 'enriched'
       scores: {
         some: {
           finalScore: { gte: profile.scoreThreshold },
@@ -123,6 +123,9 @@ export async function generateDailyDigest(userId: string) {
       paper.scores[0].finalScore >= profile.scoreThreshold
   );
 
+  console.log(`[Recommender] Found ${papers.length} papers from query`);
+  console.log(`[Recommender] ${qualifiedPapers.length} papers meet score threshold ${profile.scoreThreshold}`);
+
   // Sort by score descending
   qualifiedPapers.sort(
     (a, b) => (b.scores[0]?.finalScore || 0) - (a.scores[0]?.finalScore || 0)
@@ -148,6 +151,8 @@ export async function generateDailyDigest(userId: string) {
   );
 
   const selectedPapers = [...exploitPapers, ...explorePapers];
+
+  console.log(`[Recommender] Selected ${selectedPapers.length} papers (${exploitPapers.length} exploit + ${explorePapers.length} explore)`);
 
   // Calculate average score
   const avgScore =
