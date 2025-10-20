@@ -107,7 +107,11 @@ describe('Settings Router (Mocked)', () => {
         description: '',
       });
 
-      const caller = settingsRouter.createCaller({ req: {}, res: {} } as any);
+      const caller = settingsRouter.createCaller({
+        req: {},
+        res: {},
+        user: { id: 'user-1', email: 'test@test.com' },
+      } as any);
       const result = await caller.getCategories();
 
       // Should only return CS categories
@@ -118,7 +122,11 @@ describe('Settings Router (Mocked)', () => {
     });
 
     it('should return empty array if no categories exist', async () => {
-      const caller = settingsRouter.createCaller({ req: {}, res: {} } as any);
+      const caller = settingsRouter.createCaller({
+        req: {},
+        res: {},
+        user: { id: 'user-1', email: 'test@test.com' },
+      } as any);
       const result = await caller.getCategories();
 
       expect(result).toHaveLength(0);
@@ -140,7 +148,11 @@ describe('Settings Router (Mocked)', () => {
 
       mockPrismaProfiles.set(profile.id, profile);
 
-      const caller = settingsRouter.createCaller({ req: {}, res: {} } as any);
+      const caller = settingsRouter.createCaller({
+        req: {},
+        res: {},
+        user: { id: 'user-1', email: 'test@test.com' },
+      } as any);
       const result = await caller.getProfile();
 
       expect(result.id).toBe('profile-1');
@@ -149,7 +161,11 @@ describe('Settings Router (Mocked)', () => {
     });
 
     it('should throw error if profile does not exist', async () => {
-      const caller = settingsRouter.createCaller({ req: {}, res: {} } as any);
+      const caller = settingsRouter.createCaller({
+        req: {},
+        res: {},
+        user: { id: 'user-1', email: 'test@test.com' },
+      } as any);
 
       await expect(caller.getProfile()).rejects.toThrow(
         'User profile not found'
@@ -172,7 +188,11 @@ describe('Settings Router (Mocked)', () => {
 
       mockPrismaProfiles.set(profile.id, profile);
 
-      const caller = settingsRouter.createCaller({ req: {}, res: {} } as any);
+      const caller = settingsRouter.createCaller({
+        req: {},
+        res: {},
+        user: { id: 'user-1', email: 'test@test.com' },
+      } as any);
       const result = await caller.updateCategories({
         categories: ['cs.AI', 'cs.LG', 'cs.CL'],
       });
@@ -182,7 +202,11 @@ describe('Settings Router (Mocked)', () => {
     });
 
     it('should throw error if profile does not exist', async () => {
-      const caller = settingsRouter.createCaller({ req: {}, res: {} } as any);
+      const caller = settingsRouter.createCaller({
+        req: {},
+        res: {},
+        user: { id: 'user-1', email: 'test@test.com' },
+      } as any);
 
       await expect(
         caller.updateCategories({
@@ -207,7 +231,11 @@ describe('Settings Router (Mocked)', () => {
 
       mockPrismaProfiles.set(profile.id, profile);
 
-      const caller = settingsRouter.createCaller({ req: {}, res: {} } as any);
+      const caller = settingsRouter.createCaller({
+        req: {},
+        res: {},
+        user: { id: 'user-1', email: 'test@test.com' },
+      } as any);
       const result = await caller.updateProcessing({
         useLocalEmbeddings: false,
         useLocalLLM: false,
@@ -219,12 +247,69 @@ describe('Settings Router (Mocked)', () => {
     });
 
     it('should throw error if profile does not exist', async () => {
-      const caller = settingsRouter.createCaller({ req: {}, res: {} } as any);
+      const caller = settingsRouter.createCaller({
+        req: {},
+        res: {},
+        user: { id: 'user-1', email: 'test@test.com' },
+      } as any);
 
       await expect(
         caller.updateProcessing({
           useLocalEmbeddings: false,
           useLocalLLM: true,
+        })
+      ).rejects.toThrow('User profile not found');
+    });
+  });
+
+  describe('updatePreferences', () => {
+    it('should update existing profile preferences', async () => {
+      const profile = {
+        id: 'profile-1',
+        userId: 'user-1',
+        arxivCategories: ['cs.AI'],
+        sourcesEnabled: ['arxiv'],
+        useLocalEmbeddings: true,
+        useLocalLLM: true,
+        digestEnabled: true,
+        noiseCap: 15,
+        scoreThreshold: 0.5,
+        explorationRate: 0.15,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      mockPrismaProfiles.set(profile.id, profile);
+
+      const caller = settingsRouter.createCaller({
+        req: {},
+        res: {},
+        user: { id: 'user-1', email: 'test@test.com' },
+      } as any);
+      const result = await caller.updatePreferences({
+        digestEnabled: false,
+        noiseCap: 20,
+        scoreThreshold: 0.6,
+      });
+
+      expect(result.digestEnabled).toBe(false);
+      expect(result.noiseCap).toBe(20);
+      expect(result.scoreThreshold).toBe(0.6);
+      expect(result.updatedAt).toBeInstanceOf(Date);
+    });
+
+    it('should throw error if profile does not exist', async () => {
+      const caller = settingsRouter.createCaller({
+        req: {},
+        res: {},
+        user: { id: 'user-1', email: 'test@test.com' },
+      } as any);
+
+      await expect(
+        caller.updatePreferences({
+          digestEnabled: true,
+          noiseCap: 15,
+          scoreThreshold: 0.5,
         })
       ).rejects.toThrow('User profile not found');
     });

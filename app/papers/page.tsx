@@ -31,7 +31,6 @@ const ITEMS_PER_PAGE = 20;
 
 export default function PapersPage() {
   const [page, setPage] = useState(0);
-  const [userId] = useState('user-1'); // TODO: Get from auth context
 
   // Fetch papers
   const { data: papersData, isLoading, refetch } = trpc.papers.list.useQuery({
@@ -249,11 +248,11 @@ export default function PapersPage() {
                   {/* Feedback Actions */}
                   <Separator className="my-3" />
                   <FeedbackActions
-                    onSave={() => saveMutation.mutate({ userId, paperId: paper.id })}
-                    onDismiss={() => dismissMutation.mutate({ userId, paperId: paper.id })}
-                    onThumbsUp={() => thumbsUpMutation.mutate({ userId, paperId: paper.id })}
-                    onThumbsDown={() => thumbsDownMutation.mutate({ userId, paperId: paper.id })}
-                    onHide={() => hideMutation.mutate({ userId, paperId: paper.id })}
+                    onSave={() => saveMutation.mutate({ paperId: paper.id })}
+                    onDismiss={() => dismissMutation.mutate({ paperId: paper.id })}
+                    onThumbsUp={() => thumbsUpMutation.mutate({ paperId: paper.id })}
+                    onThumbsDown={() => thumbsDownMutation.mutate({ paperId: paper.id })}
+                    onHide={() => hideMutation.mutate({ paperId: paper.id })}
                     isSaved={isSaved}
                     isThumbsUp={isThumbsUp}
                     isThumbsDown={isThumbsDown}

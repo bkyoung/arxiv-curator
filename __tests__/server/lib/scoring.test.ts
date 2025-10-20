@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
   calculateEvidenceScore,
-  calculateCosineSimilarity,
   calculatePersonalFitScore,
   calculateNoveltyScore,
   calculateLabPriorScore,
@@ -14,6 +13,7 @@ import type {
   LabPriorInput,
   MathPenaltyInput,
 } from '@/server/lib/scoring';
+import { cosineSimilarity } from '@/server/lib/vector-math';
 
 describe('Scoring Library', () => {
   describe('calculateEvidenceScore', () => {
@@ -149,18 +149,18 @@ describe('Scoring Library', () => {
     });
   });
 
-  describe('calculateCosineSimilarity', () => {
+  describe('cosineSimilarity (normalized)', () => {
     it('should return 1.0 for identical vectors', () => {
       const vec1 = [1, 0, 0];
       const vec2 = [1, 0, 0];
-      const similarity = calculateCosineSimilarity(vec1, vec2);
+      const similarity = cosineSimilarity(vec1, vec2, true);
       expect(similarity).toBeCloseTo(1.0, 5);
     });
 
     it('should return 0.5 for orthogonal vectors', () => {
       const vec1 = [1, 0, 0];
       const vec2 = [0, 1, 0];
-      const similarity = calculateCosineSimilarity(vec1, vec2);
+      const similarity = cosineSimilarity(vec1, vec2, true);
       // Raw cosine: 0.0, normalized: (0+1)/2 = 0.5
       expect(similarity).toBeCloseTo(0.5, 5);
     });
@@ -168,7 +168,7 @@ describe('Scoring Library', () => {
     it('should return 0.0 for opposite vectors', () => {
       const vec1 = [1, 0, 0];
       const vec2 = [-1, 0, 0];
-      const similarity = calculateCosineSimilarity(vec1, vec2);
+      const similarity = cosineSimilarity(vec1, vec2, true);
       // Raw cosine: -1.0, normalized: (-1+1)/2 = 0.0
       expect(similarity).toBeCloseTo(0.0, 5);
     });
@@ -178,21 +178,21 @@ describe('Scoring Library', () => {
       const vec2 = [4, 5, 6];
       // Raw cosine: (1*4 + 2*5 + 3*6) / (sqrt(14) * sqrt(77)) ≈ 0.9746
       // Normalized: (0.9746 + 1) / 2 ≈ 0.9873
-      const similarity = calculateCosineSimilarity(vec1, vec2);
+      const similarity = cosineSimilarity(vec1, vec2, true);
       expect(similarity).toBeCloseTo(0.9873, 3);
     });
 
     it('should handle zero vectors', () => {
       const vec1 = [0, 0, 0];
       const vec2 = [1, 2, 3];
-      const similarity = calculateCosineSimilarity(vec1, vec2);
+      const similarity = cosineSimilarity(vec1, vec2, true);
       expect(similarity).toBe(0);
     });
 
     it('should normalize result to [0, 1] range', () => {
       const vec1 = [1, -1, 0];
       const vec2 = [-1, 1, 0];
-      const similarity = calculateCosineSimilarity(vec1, vec2);
+      const similarity = cosineSimilarity(vec1, vec2, true);
       // Raw cosine would be -1.0, normalized to 0.0
       expect(similarity).toBeGreaterThanOrEqual(0);
       expect(similarity).toBeLessThanOrEqual(1);

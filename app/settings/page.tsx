@@ -3,7 +3,7 @@
 /**
  * Settings Page
  *
- * Configure arXiv categories and processing preferences
+ * Unified settings page with tabs for different configuration sections
  */
 
 import { useState, useEffect } from 'react';
@@ -13,7 +13,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Settings2, Database, Cpu, CheckCircle2, Loader2 } from 'lucide-react';
+import { ModelsSettings } from '@/app/settings/models/ModelsSettings';
+import { PreferencesSettings } from '@/app/settings/preferences/PreferencesSettings';
 
 export default function SettingsPage() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -29,6 +32,7 @@ export default function SettingsPage() {
   // Mutations
   const updateCategories = trpc.settings.updateCategories.useMutation();
   const updateProcessing = trpc.settings.updateProcessing.useMutation();
+  const updatePreferences = trpc.settings.updatePreferences.useMutation();
 
   // Initialize from profile
   useEffect(() => {
@@ -66,6 +70,32 @@ export default function SettingsPage() {
     }
   };
 
+  const handleModelsSave = async (models: {
+    embeddingModel: 'local' | 'cloud';
+    languageModel: 'local' | 'cloud';
+  }) => {
+    try {
+      await updateProcessing.mutateAsync({
+        useLocalEmbeddings: models.embeddingModel === 'local',
+        useLocalLLM: models.languageModel === 'local',
+      });
+    } catch (error) {
+      console.error('Failed to save models:', error);
+    }
+  };
+
+  const handlePreferencesSave = async (preferences: {
+    digestEnabled: boolean;
+    noiseCap: number;
+    scoreThreshold: number;
+  }) => {
+    try {
+      await updatePreferences.mutateAsync(preferences);
+    } catch (error) {
+      console.error('Failed to save preferences:', error);
+    }
+  };
+
   return (
     <div className="container mx-auto py-8 px-4 max-w-4xl">
       <div className="mb-8">
@@ -74,11 +104,18 @@ export default function SettingsPage() {
           <h1 className="text-3xl font-bold">Settings</h1>
         </div>
         <p className="text-muted-foreground">
-          Configure your arXiv categories and processing preferences
+          Configure your research preferences and system settings
         </p>
       </div>
 
-      <div className="space-y-6">
+      <Tabs defaultValue="sources" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="sources">Sources</TabsTrigger>
+          <TabsTrigger value="models">Models</TabsTrigger>
+          <TabsTrigger value="preferences">Preferences</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="sources" className="space-y-6 mt-6">
         {/* arXiv Categories */}
         <Card>
           <CardHeader>
@@ -190,27 +227,54 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Save Button */}
-        <div className="flex items-center gap-3">
-          <Button onClick={handleSave} disabled={isSaving || selectedCategories.length === 0}>
-            {isSaving ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              'Save Settings'
-            )}
-          </Button>
+          {/* Save Button */}
+          <div className="flex items-center gap-3">
+            <Button onClick={handleSave} disabled={isSaving || selectedCategories.length === 0}>
+              {isSaving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save Settings'
+              )}
+            </Button>
 
-          {saveSuccess && (
-            <div className="flex items-center gap-2 text-sm text-green-600">
-              <CheckCircle2 className="h-4 w-4" />
-              Settings saved successfully
-            </div>
+            {saveSuccess && (
+              <div className="flex items-center gap-2 text-sm text-green-600">
+                <CheckCircle2 className="h-4 w-4" />
+                Settings saved successfully
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="models" className="mt-6">
+          {profile && (
+            <ModelsSettings
+              profile={{
+                embeddingModel: profile.useLocalEmbeddings ? 'local' : 'cloud',
+                languageModel: profile.useLocalLLM ? 'local' : 'cloud',
+              }}
+              onSave={handleModelsSave}
+            />
           )}
-        </div>
-      </div>
+        </TabsContent>
+
+        <TabsContent value="preferences" className="mt-6">
+          {profile && (
+            <PreferencesSettings
+              profile={{
+                digestEnabled: profile.digestEnabled ?? true,
+                noiseCap: profile.noiseCap ?? 15,
+                scoreThreshold: profile.scoreThreshold ?? 0.5,
+                explorationRate: profile.explorationRate ?? 0.15,
+              }}
+              onSave={handlePreferencesSave}
+            />
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

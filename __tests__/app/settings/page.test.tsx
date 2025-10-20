@@ -14,6 +14,7 @@ const mockGetCategories = vi.fn();
 const mockGetProfile = vi.fn();
 const mockUpdateCategories = vi.fn();
 const mockUpdateProcessing = vi.fn();
+const mockUpdatePreferences = vi.fn();
 
 vi.mock('@/lib/trpc', () => ({
   trpc: {
@@ -32,6 +33,11 @@ vi.mock('@/lib/trpc', () => ({
       updateProcessing: {
         useMutation: () => ({
           mutateAsync: mockUpdateProcessing,
+        }),
+      },
+      updatePreferences: {
+        useMutation: () => ({
+          mutateAsync: mockUpdatePreferences,
         }),
       },
     },
@@ -243,5 +249,68 @@ describe('Settings Page', () => {
     render(<SettingsPage />);
 
     expect(screen.getByText('No categories available. Run the Scout agent to fetch categories.')).toBeInTheDocument();
+  });
+
+  describe('Tabs Navigation', () => {
+    const fullProfile = {
+      id: 'profile-1',
+      userId: 'user-1',
+      arxivCategories: ['cs.AI'],
+      sourcesEnabled: ['arxiv'],
+      useLocalEmbeddings: true,
+      useLocalLLM: true,
+      digestEnabled: true,
+      noiseCap: 15,
+      scoreThreshold: 0.5,
+      explorationRate: 0.15,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    beforeEach(() => {
+      mockGetCategories.mockReturnValue({
+        data: [
+          { id: 'cs.AI', name: 'Artificial Intelligence', description: '' },
+        ],
+      });
+      mockGetProfile.mockReturnValue({ data: fullProfile });
+    });
+
+    it('should render all tabs', () => {
+      render(<SettingsPage />);
+
+      expect(screen.getByRole('tab', { name: /sources/i })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: /models/i })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: /preferences/i })).toBeInTheDocument();
+    });
+
+    it('should show sources tab content by default', () => {
+      render(<SettingsPage />);
+
+      expect(screen.getByText('arXiv Categories')).toBeInTheDocument();
+      expect(screen.getByText('Artificial Intelligence')).toBeInTheDocument();
+    });
+
+    it('should switch to models tab when clicked', async () => {
+      const user = userEvent.setup();
+      render(<SettingsPage />);
+
+      const modelsTab = screen.getByRole('tab', { name: /models/i });
+      await user.click(modelsTab);
+
+      expect(screen.getByText(/AI Models Configuration/i)).toBeInTheDocument();
+      expect(screen.getByText(/Embedding Model/i)).toBeInTheDocument();
+    });
+
+    it('should switch to preferences tab when clicked', async () => {
+      const user = userEvent.setup();
+      render(<SettingsPage />);
+
+      const preferencesTab = screen.getByRole('tab', { name: /preferences/i });
+      await user.click(preferencesTab);
+
+      expect(screen.getByText(/Briefing Preferences/i)).toBeInTheDocument();
+      expect(screen.getByText(/Enable Daily Digests/i)).toBeInTheDocument();
+    });
   });
 });

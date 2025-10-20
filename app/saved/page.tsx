@@ -6,7 +6,6 @@
  * Display papers saved by the user
  */
 
-import { useState } from 'react';
 import { trpc } from '@/lib/trpc';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -25,11 +24,8 @@ import {
 } from 'lucide-react';
 
 export default function SavedPage() {
-  const [userId] = useState('user-1'); // TODO: Get from auth context
-
   // Fetch saved papers
   const { data: savedFeedback, isLoading, refetch } = trpc.feedback.getHistory.useQuery({
-    userId,
     action: 'save',
   });
 
@@ -204,11 +200,11 @@ export default function SavedPage() {
                   {/* Feedback Actions */}
                   <Separator className="my-3" />
                   <FeedbackActions
-                    onSave={() => saveMutation.mutate({ userId, paperId: paper.id })}
-                    onDismiss={() => dismissMutation.mutate({ userId, paperId: paper.id })}
-                    onThumbsUp={() => thumbsUpMutation.mutate({ userId, paperId: paper.id })}
-                    onThumbsDown={() => thumbsDownMutation.mutate({ userId, paperId: paper.id })}
-                    onHide={() => hideMutation.mutate({ userId, paperId: paper.id })}
+                    onSave={() => saveMutation.mutate({ paperId: paper.id })}
+                    onDismiss={() => dismissMutation.mutate({ paperId: paper.id })}
+                    onThumbsUp={() => thumbsUpMutation.mutate({ paperId: paper.id })}
+                    onThumbsDown={() => thumbsDownMutation.mutate({ paperId: paper.id })}
+                    onHide={() => hideMutation.mutate({ paperId: paper.id })}
                     isSaved={isSaved}
                     isThumbsUp={isThumbsUp}
                     isThumbsDown={isThumbsDown}

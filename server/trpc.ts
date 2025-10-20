@@ -1,4 +1,4 @@
-import { initTRPC } from '@trpc/server';
+import { initTRPC, TRPCError } from '@trpc/server';
 import { FetchCreateContextFnOptions } from '@trpc/server/adapters/fetch';
 import superjson from 'superjson';
 import { ZodError } from 'zod';
@@ -10,6 +10,11 @@ import { ZodError } from 'zod';
 export const createTRPCContext = async (opts: FetchCreateContextFnOptions) => {
   return {
     headers: opts.req.headers,
+    // Mock user for development - will be replaced with real auth in future phase
+    user: {
+      id: 'user-1',
+      email: 'test@test.com',
+    },
     // Session will be added here in Phase 1:
     // session: await getServerSession(authOptions),
   };
@@ -36,3 +41,23 @@ const t = initTRPC.context<Context>().create({
 
 export const router = t.router;
 export const publicProcedure = t.procedure;
+
+/**
+ * Protected procedure that requires authentication.
+ * Throws UNAUTHORIZED error if user is not authenticated.
+ */
+export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
+  if (!ctx.user) {
+    throw new TRPCError({
+      code: 'UNAUTHORIZED',
+      message: 'Authentication required',
+    });
+  }
+
+  return next({
+    ctx: {
+      ...ctx,
+      user: ctx.user, // Type-safe: guaranteed to be non-null
+    },
+  });
+});

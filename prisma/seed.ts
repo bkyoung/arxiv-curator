@@ -39,7 +39,7 @@ async function main() {
       labBoosts: {},
       mathDepthMax: 1.0,
       explorationRate: 0.15,
-      noiseCap: 50,
+      noiseCap: 15,
       targetToday: 15,
       target7d: 100,
       arxivCategories: ['cs.AI', 'cs.LG', 'cs.CV', 'cs.CL'],

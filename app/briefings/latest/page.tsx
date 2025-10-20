@@ -1,0 +1,197 @@
+'use client';
+
+/**
+ * Today's Briefing Page
+ *
+ * Three-pane layout: Navigation | Paper List | Paper Detail
+ */
+
+import { useState } from 'react';
+import { trpc } from '@/lib/trpc';
+import { NavigationPane } from '@/components/NavigationPane';
+import { BriefingList } from '@/components/BriefingList';
+import { PaperDetailView } from '@/components/PaperDetailView';
+import { HelpModal } from '@/components/HelpModal';
+import { useHotkeys } from '@/hooks/useHotkeys';
+import { Loader2 } from 'lucide-react';
+
+export default function LatestBriefingPage() {
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [showHelp, setShowHelp] = useState(false);
+
+  // Fetch today's briefing
+  const { data: briefing, isLoading, refetch } = trpc.briefings.getLatest.useQuery();
+
+  // Fetch saved count for navigation badge
+  const { data: savedFeedback } = trpc.feedback.getHistory.useQuery({
+    action: 'save',
+  });
+
+  // Feedback mutations
+  const saveMutation = trpc.feedback.save.useMutation({
+    onSuccess: () => refetch(),
+  });
+
+  const hideMutation = trpc.feedback.hide.useMutation({
+    onSuccess: () => refetch(),
+  });
+
+  const dismissMutation = trpc.feedback.dismiss.useMutation({
+    onSuccess: () => refetch(),
+  });
+
+  const thumbsUpMutation = trpc.feedback.thumbsUp.useMutation({
+    onSuccess: () => refetch(),
+  });
+
+  const thumbsDownMutation = trpc.feedback.thumbsDown.useMutation({
+    onSuccess: () => refetch(),
+  });
+
+  // Keyboard navigation handlers (defined before early returns to satisfy hooks rules)
+  const handleNext = () => {
+    if (briefing?.papers) {
+      setSelectedIndex((prev) => Math.min(prev + 1, briefing.papers.length - 1));
+    }
+  };
+
+  const handlePrev = () => {
+    setSelectedIndex((prev) => Math.max(prev - 1, 0));
+  };
+
+  const handleSave = () => {
+    if (briefing?.papers?.[selectedIndex]) {
+      saveMutation.mutate({ paperId: briefing.papers[selectedIndex].id });
+    }
+  };
+
+  const handleHide = () => {
+    if (briefing?.papers?.[selectedIndex]) {
+      hideMutation.mutate({ paperId: briefing.papers[selectedIndex].id });
+    }
+  };
+
+  const handleOpenPdf = () => {
+    const selectedPaper = briefing?.papers?.[selectedIndex];
+    if (selectedPaper?.pdfUrl) {
+      window.open(selectedPaper.pdfUrl, '_blank');
+    }
+  };
+
+  const handleToggleHelp = () => {
+    setShowHelp((prev) => !prev);
+  };
+
+  const handleCloseHelp = () => {
+    setShowHelp(false);
+  };
+
+  // Register keyboard shortcuts (must be called unconditionally)
+  useHotkeys([
+    { key: 'j', action: handleNext },
+    { key: 'k', action: handlePrev },
+    { key: 's', action: handleSave },
+    { key: 'h', action: handleHide },
+    { key: 'Enter', action: handleOpenPdf },
+    { key: '?', action: handleToggleHelp },
+    { key: 'Escape', action: handleCloseHelp },
+  ]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!briefing || !briefing.papers || briefing.papers.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <p className="text-muted-foreground">No briefing available for today</p>
+        </div>
+      </div>
+    );
+  }
+
+  const selectedPaper = briefing.papers[selectedIndex];
+  const savedCount = savedFeedback?.length || 0;
+
+  // Individual feedback handlers for the selected paper
+  const handleSavePaper = () => {
+    if (selectedPaper) {
+      saveMutation.mutate({ paperId: selectedPaper.id });
+    }
+  };
+
+  const handleDismissPaper = () => {
+    if (selectedPaper) {
+      dismissMutation.mutate({ paperId: selectedPaper.id });
+    }
+  };
+
+  const handleThumbsUpPaper = () => {
+    if (selectedPaper) {
+      thumbsUpMutation.mutate({ paperId: selectedPaper.id });
+    }
+  };
+
+  const handleThumbsDownPaper = () => {
+    if (selectedPaper) {
+      thumbsDownMutation.mutate({ paperId: selectedPaper.id });
+    }
+  };
+
+  const handleHidePaper = () => {
+    if (selectedPaper) {
+      hideMutation.mutate({ paperId: selectedPaper.id });
+    }
+  };
+
+  return (
+    <div className="flex h-screen">
+      {/* Navigation Pane */}
+      <div className="w-48 border-r bg-muted/10">
+        <NavigationPane savedCount={savedCount} />
+      </div>
+
+      {/* Briefing List Pane */}
+      <div className="w-96 border-r">
+        <div className="p-4 border-b">
+          <h2 className="font-semibold">Today&apos;s Briefing</h2>
+          <p className="text-sm text-muted-foreground">
+            {briefing.paperCount} papers • {Math.round((briefing.avgScore || 0) * 100)}%
+            avg score
+          </p>
+        </div>
+        <BriefingList
+          papers={briefing.papers}
+          selectedIndex={selectedIndex}
+          onSelectPaper={setSelectedIndex}
+        />
+      </div>
+
+      {/* Paper Detail Pane */}
+      <div className="flex-1">
+        {selectedPaper ? (
+          <PaperDetailView
+            paper={selectedPaper}
+            onSave={handleSavePaper}
+            onDismiss={handleDismissPaper}
+            onThumbsUp={handleThumbsUpPaper}
+            onThumbsDown={handleThumbsDownPaper}
+            onHide={handleHidePaper}
+          />
+        ) : (
+          <div className="flex items-center justify-center h-full">
+            <p className="text-muted-foreground">Select a paper to view details</p>
+          </div>
+        )}
+      </div>
+
+      {/* Help Modal */}
+      <HelpModal open={showHelp} onClose={handleCloseHelp} />
+    </div>
+  );
+}

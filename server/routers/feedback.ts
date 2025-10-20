@@ -6,7 +6,7 @@
  */
 
 import { z } from 'zod';
-import { router, publicProcedure } from '../trpc';
+import { router, protectedProcedure } from '../trpc';
 import { prisma } from '@/server/db';
 import {
   recordFeedback,
@@ -53,85 +53,83 @@ export const feedbackRouter = router({
   /**
    * Record save feedback
    */
-  save: publicProcedure
+  save: protectedProcedure
     .input(
       z.object({
-        userId: z.string(),
         paperId: z.string(),
       })
     )
-    .mutation(async ({ input }) =>
-      handleFeedback(input.userId, input.paperId, 'save')
-    ),
+    .mutation(async ({ input, ctx }) => {
+      return handleFeedback(ctx.user.id, input.paperId, 'save');
+    }),
 
   /**
    * Record dismiss feedback
    */
-  dismiss: publicProcedure
+  dismiss: protectedProcedure
     .input(
       z.object({
-        userId: z.string(),
         paperId: z.string(),
       })
     )
-    .mutation(async ({ input }) =>
-      handleFeedback(input.userId, input.paperId, 'dismiss')
-    ),
+    .mutation(async ({ input, ctx }) => {
+      return handleFeedback(ctx.user.id, input.paperId, 'dismiss');
+    }),
 
   /**
    * Record thumbs up feedback
    */
-  thumbsUp: publicProcedure
+  thumbsUp: protectedProcedure
     .input(
       z.object({
-        userId: z.string(),
         paperId: z.string(),
       })
     )
-    .mutation(async ({ input }) =>
-      handleFeedback(input.userId, input.paperId, 'thumbs_up')
-    ),
+    .mutation(async ({ input, ctx }) => {
+      return handleFeedback(ctx.user.id, input.paperId, 'thumbs_up');
+    }),
 
   /**
    * Record thumbs down feedback
    */
-  thumbsDown: publicProcedure
+  thumbsDown: protectedProcedure
     .input(
       z.object({
-        userId: z.string(),
         paperId: z.string(),
       })
     )
-    .mutation(async ({ input }) =>
-      handleFeedback(input.userId, input.paperId, 'thumbs_down')
-    ),
+    .mutation(async ({ input, ctx }) => {
+      return handleFeedback(ctx.user.id, input.paperId, 'thumbs_down');
+    }),
 
   /**
    * Record hide feedback
    */
-  hide: publicProcedure
+  hide: protectedProcedure
     .input(
       z.object({
-        userId: z.string(),
         paperId: z.string(),
       })
     )
-    .mutation(async ({ input }) =>
-      handleFeedback(input.userId, input.paperId, 'hide')
-    ),
+    .mutation(async ({ input, ctx }) => {
+      return handleFeedback(ctx.user.id, input.paperId, 'hide');
+    }),
 
   /**
    * Get feedback history for a user
    */
-  getHistory: publicProcedure
+  getHistory: protectedProcedure
     .input(
       z.object({
-        userId: z.string(),
         action: z.string().optional(),
         limit: z.number().optional(),
       })
     )
-    .query(async ({ input }) => {
-      return await getFeedbackHistory(input);
+    .query(async ({ input, ctx }) => {
+      return await getFeedbackHistory({
+        userId: ctx.user.id,
+        action: input.action,
+        limit: input.limit,
+      });
     }),
 });

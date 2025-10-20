@@ -29,6 +29,7 @@ model User {
   feedback  Feedback[]
   analyses  Analysis[]
   notebooks Notebook[]
+  briefings Briefing[]
 }
 
 model Account {
@@ -87,11 +88,13 @@ model UserProfile {
   labBoosts       Json     @default("{}") // Lab preferences: { "DeepMind": 0.05 }
 
   // Preferences
-  mathDepthMax    Float @default(1.0) // 0.0-1.0 tolerance for math-heavy papers
-  explorationRate Float @default(0.15) // 15% exploration picks
-  noiseCap        Int   @default(50) // Max papers per day
-  targetToday     Int   @default(15) // Target digest size (today)
-  target7d        Int   @default(100) // Target digest size (7 days)
+  mathDepthMax    Float   @default(1.0) // 0.0-1.0 tolerance for math-heavy papers
+  explorationRate Float   @default(0.15) // 15% exploration picks
+  noiseCap        Int     @default(15) // Max papers per day (Phase 3: 10-20 range)
+  targetToday     Int     @default(15) // Target digest size (today)
+  target7d        Int     @default(100) // Target digest size (7 days)
+  scoreThreshold  Float   @default(0.5) // Minimum score for papers to appear in digest
+  digestEnabled   Boolean @default(true) // Enable/disable daily digest generation
 
   // Sources
   arxivCategories String[] @default(["cs.AI", "cs.LG", "cs.CV", "cs.CL"])
@@ -361,17 +364,24 @@ model TechniqueCooccurrence {
 // ===========================
 
 model Briefing {
-  id String @id @default(cuid())
+  id     String @id @default(cuid())
   userId String
+  date   DateTime @db.Date // Daily briefing date (no time component)
 
-  window       String   // "today", "7d", "custom"
-  briefingDate DateTime
-  topPaperIds  String[] // Array of paper IDs
-  trendSummary Json? // Optional trend summary
+  // Paper selection
+  paperIds   String[] // References to Paper.id
+  paperCount Int
+  avgScore   Float
 
-  createdAt DateTime @default(now())
+  // Metadata
+  status      String    @default("ready") // 'generating' | 'ready' | 'viewed'
+  generatedAt DateTime  @default(now())
+  viewedAt    DateTime?
 
-  @@index([userId, briefingDate])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId, date])
 }
 
 // ===========================

@@ -4,6 +4,8 @@
  * Multi-signal scoring functions for Phase 2 personalization
  */
 
+import { cosineSimilarity } from './vector-math';
+
 export interface EvidenceSignals {
   hasBaselines: boolean;
   hasAblations: boolean;
@@ -67,40 +69,6 @@ export function calculateEvidenceScore(signals: EvidenceSignals): number {
   return score;
 }
 
-/**
- * Calculate cosine similarity between two vectors
- *
- * Normalized to [0, 1] range (raw cosine is [-1, 1])
- *
- * @param vec1 - First vector
- * @param vec2 - Second vector
- * @returns Similarity score in range [0, 1]
- */
-export function calculateCosineSimilarity(
-  vec1: number[],
-  vec2: number[]
-): number {
-  if (vec1.length !== vec2.length) {
-    throw new Error('Vectors must have the same length');
-  }
-
-  // Handle zero vectors
-  const magnitude1 = Math.sqrt(vec1.reduce((sum, val) => sum + val * val, 0));
-  const magnitude2 = Math.sqrt(vec2.reduce((sum, val) => sum + val * val, 0));
-
-  if (magnitude1 === 0 || magnitude2 === 0) {
-    return 0;
-  }
-
-  // Calculate dot product
-  const dotProduct = vec1.reduce((sum, val, i) => sum + val * vec2[i], 0);
-
-  // Cosine similarity (raw range: [-1, 1])
-  const cosineSim = dotProduct / (magnitude1 * magnitude2);
-
-  // Normalize to [0, 1] range: (cos + 1) / 2
-  return (cosineSim + 1) / 2;
-}
 
 /**
  * Calculate Personal Fit score (P)
@@ -116,10 +84,11 @@ export function calculateCosineSimilarity(
  * @returns Personal fit score in range [0, 1]
  */
 export function calculatePersonalFitScore(input: PersonalFitInput): number {
-  // Calculate vector similarity
-  const vectorSimilarity = calculateCosineSimilarity(
+  // Calculate vector similarity (normalized to [0, 1])
+  const vectorSimilarity = cosineSimilarity(
     input.paperEmbedding,
-    input.userEmbedding
+    input.userEmbedding,
+    true
   );
 
   // Calculate rule bonuses
@@ -176,9 +145,10 @@ export function calculateNoveltyScore(input: NoveltyInput): number {
   // Calculate centroid distance
   let centroidDistance = 0;
   if (input.userCentroid.some((val) => val !== 0)) {
-    const similarity = calculateCosineSimilarity(
+    const similarity = cosineSimilarity(
       input.paperEmbedding,
-      input.userCentroid
+      input.userCentroid,
+      true
     );
     // Distance = 1 - similarity
     centroidDistance = 1 - similarity;

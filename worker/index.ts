@@ -7,6 +7,7 @@
 import { startQueue, boss } from '@/server/queue';
 import { scoutEnrichWorkflow } from './workflows/scout-enrich';
 import { enrichPaper } from '@/server/agents/enricher';
+import { generateDailyDigestsJob } from './jobs/generate-daily-digests';
 import { prisma } from '@/server/db';
 
 /**
@@ -100,6 +101,50 @@ async function main() {
           );
           throw new Error(
             `Enrich-paper job ${jobId} failed for paper ${paperId}: ${errorMessage}`
+          );
+        }
+      }
+
+      return { success: true };
+    });
+
+    // Schedule daily digest generation at 6:30 AM (after arXiv's 6:00 AM update)
+    await boss.schedule(
+      'generate-daily-digests',
+      '30 6 * * *', // Cron: 6:30 AM every day
+      {},
+      { tz: 'America/New_York' } // arXiv's timezone
+    );
+
+    console.log('[Worker] Daily digest job scheduled for 6:30 AM ET');
+
+    // Register job handler: generate-daily-digests
+    await boss.work('generate-daily-digests', async (jobs) => {
+      const jobArray = Array.isArray(jobs) ? jobs : [jobs];
+
+      for (const job of jobArray) {
+        const jobId = (job as any).id || 'unknown';
+
+        console.log(`[Worker] Processing generate-daily-digests job ${jobId}`);
+
+        try {
+          const result = await generateDailyDigestsJob();
+
+          console.log(`[Worker] Job ${jobId} completed`);
+          console.log(
+            `[Worker] Generated digests: ${result.succeeded} succeeded, ${result.failed} failed (total: ${result.total})`
+          );
+
+          return result;
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          console.error(
+            `[Worker] Generate-daily-digests job ${jobId} failed:`,
+            error
+          );
+          throw new Error(
+            `Generate-daily-digests job ${jobId} failed: ${errorMessage}`
           );
         }
       }

@@ -4,7 +4,7 @@
  * API endpoints for user settings and configuration
  */
 
-import { router, publicProcedure } from '@/server/trpc';
+import { router, publicProcedure, protectedProcedure } from '@/server/trpc';
 import { prisma } from '@/server/db';
 import { z } from 'zod';
 
@@ -63,17 +63,19 @@ export const settingsRouter = router({
   /**
    * Update arXiv category preferences
    */
-  updateCategories: publicProcedure
+  updateCategories: protectedProcedure
     .input(z.object({ categories: z.array(z.string()) }))
-    .mutation(async ({ input }) => {
-      const existing = await getCurrentUserProfile();
+    .mutation(async ({ input, ctx }) => {
+      const profile = await prisma.userProfile.findUnique({
+        where: { userId: ctx.user.id },
+      });
 
-      if (!existing) {
+      if (!profile) {
         throw new Error('User profile not found');
       }
 
       return await prisma.userProfile.update({
-        where: { id: existing.id },
+        where: { id: profile.id },
         data: {
           arxivCategories: input.categories,
           updatedAt: new Date(),
@@ -84,22 +86,24 @@ export const settingsRouter = router({
   /**
    * Update processing preferences (local vs cloud)
    */
-  updateProcessing: publicProcedure
+  updateProcessing: protectedProcedure
     .input(
       z.object({
         useLocalEmbeddings: z.boolean(),
         useLocalLLM: z.boolean(),
       })
     )
-    .mutation(async ({ input }) => {
-      const existing = await getCurrentUserProfile();
+    .mutation(async ({ input, ctx }) => {
+      const profile = await prisma.userProfile.findUnique({
+        where: { userId: ctx.user.id },
+      });
 
-      if (!existing) {
+      if (!profile) {
         throw new Error('User profile not found');
       }
 
       return await prisma.userProfile.update({
-        where: { id: existing.id },
+        where: { id: profile.id },
         data: {
           useLocalEmbeddings: input.useLocalEmbeddings,
           useLocalLLM: input.useLocalLLM,
@@ -111,7 +115,7 @@ export const settingsRouter = router({
   /**
    * Update personalization settings (topics, keywords)
    */
-  updatePersonalization: publicProcedure
+  updatePersonalization: protectedProcedure
     .input(
       z.object({
         includeTopics: z.array(z.string()).optional(),
@@ -120,15 +124,17 @@ export const settingsRouter = router({
         excludeKeywords: z.array(z.string()).optional(),
       })
     )
-    .mutation(async ({ input }) => {
-      const existing = await getCurrentUserProfile();
+    .mutation(async ({ input, ctx }) => {
+      const profile = await prisma.userProfile.findUnique({
+        where: { userId: ctx.user.id },
+      });
 
-      if (!existing) {
+      if (!profile) {
         throw new Error('User profile not found');
       }
 
       return await prisma.userProfile.update({
-        where: { id: existing.id },
+        where: { id: profile.id },
         data: {
           includeTopics: input.includeTopics,
           excludeTopics: input.excludeTopics,
@@ -142,21 +148,23 @@ export const settingsRouter = router({
   /**
    * Update lab preferences
    */
-  updateLabPreferences: publicProcedure
+  updateLabPreferences: protectedProcedure
     .input(
       z.object({
         labBoosts: z.record(z.string(), z.number()),
       })
     )
-    .mutation(async ({ input }) => {
-      const existing = await getCurrentUserProfile();
+    .mutation(async ({ input, ctx }) => {
+      const profile = await prisma.userProfile.findUnique({
+        where: { userId: ctx.user.id },
+      });
 
-      if (!existing) {
+      if (!profile) {
         throw new Error('User profile not found');
       }
 
       return await prisma.userProfile.update({
-        where: { id: existing.id },
+        where: { id: profile.id },
         data: {
           labBoosts: input.labBoosts,
           updatedAt: new Date(),
@@ -167,21 +175,23 @@ export const settingsRouter = router({
   /**
    * Update math sensitivity
    */
-  updateMathSensitivity: publicProcedure
+  updateMathSensitivity: protectedProcedure
     .input(
       z.object({
         mathDepthMax: z.number().min(0).max(1),
       })
     )
-    .mutation(async ({ input }) => {
-      const existing = await getCurrentUserProfile();
+    .mutation(async ({ input, ctx }) => {
+      const profile = await prisma.userProfile.findUnique({
+        where: { userId: ctx.user.id },
+      });
 
-      if (!existing) {
+      if (!profile) {
         throw new Error('User profile not found');
       }
 
       return await prisma.userProfile.update({
-        where: { id: existing.id },
+        where: { id: profile.id },
         data: {
           mathDepthMax: input.mathDepthMax,
           updatedAt: new Date(),
@@ -192,23 +202,56 @@ export const settingsRouter = router({
   /**
    * Update exploration rate
    */
-  updateExplorationRate: publicProcedure
+  updateExplorationRate: protectedProcedure
     .input(
       z.object({
         explorationRate: z.number().min(0).max(0.3),
       })
     )
-    .mutation(async ({ input }) => {
-      const existing = await getCurrentUserProfile();
+    .mutation(async ({ input, ctx }) => {
+      const profile = await prisma.userProfile.findUnique({
+        where: { userId: ctx.user.id },
+      });
 
-      if (!existing) {
+      if (!profile) {
         throw new Error('User profile not found');
       }
 
       return await prisma.userProfile.update({
-        where: { id: existing.id },
+        where: { id: profile.id },
         data: {
           explorationRate: input.explorationRate,
+          updatedAt: new Date(),
+        },
+      });
+    }),
+
+  /**
+   * Update briefing preferences
+   */
+  updatePreferences: protectedProcedure
+    .input(
+      z.object({
+        digestEnabled: z.boolean(),
+        noiseCap: z.number().min(10).max(20),
+        scoreThreshold: z.number().min(0.3).max(0.7),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const profile = await prisma.userProfile.findUnique({
+        where: { userId: ctx.user.id },
+      });
+
+      if (!profile) {
+        throw new Error('User profile not found');
+      }
+
+      return await prisma.userProfile.update({
+        where: { id: profile.id },
+        data: {
+          digestEnabled: input.digestEnabled,
+          noiseCap: input.noiseCap,
+          scoreThreshold: input.scoreThreshold,
           updatedAt: new Date(),
         },
       });
