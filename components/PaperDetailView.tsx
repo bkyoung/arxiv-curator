@@ -55,6 +55,11 @@ export function PaperDetailView({ paper, onSave, onDismiss, onThumbsUp, onThumbs
   const analysisBQuery = trpc.analysis.getAnalysis.useQuery({ paperId: paper.id, depth: 'B' });
   const analysisCQuery = trpc.analysis.getAnalysis.useQuery({ paperId: paper.id, depth: 'C' });
 
+  // Destructure refetch functions (stable references)
+  const { refetch: refetchA } = analysisAQuery;
+  const { refetch: refetchB } = analysisBQuery;
+  const { refetch: refetchC } = analysisCQuery;
+
   // Poll for job status when generating
   const jobStatusQuery = trpc.analysis.getJobStatus.useQuery(
     { jobId: generatingJobId! },
@@ -76,12 +81,11 @@ export function PaperDetailView({ paper, onSave, onDismiss, onThumbsUp, onThumbs
     if (jobStatusQuery.data?.state === 'completed') {
       setGeneratingJobId(null);
       // Refetch the analysis for the selected depth
-      if (selectedDepth === 'A') analysisAQuery.refetch();
-      if (selectedDepth === 'B') analysisBQuery.refetch();
-      if (selectedDepth === 'C') analysisCQuery.refetch();
+      if (selectedDepth === 'A') refetchA();
+      if (selectedDepth === 'B') refetchB();
+      if (selectedDepth === 'C') refetchC();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jobStatusQuery.data?.state, selectedDepth]);
+  }, [jobStatusQuery.data?.state, selectedDepth, refetchA, refetchB, refetchC]);
 
   const handleAnalysisRequested = (depth: 'A' | 'B' | 'C', jobId: string | null) => {
     setSelectedDepth(depth);

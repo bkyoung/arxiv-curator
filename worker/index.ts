@@ -33,6 +33,8 @@ if (!process.env.DATABASE_URL) {
 // Static imports are hoisted and execute before any code, including dotenv
 // Dynamic imports delay module loading until after environment variables are set
 
+import { QUEUE_NAMES } from '@/server/lib/queue-constants';
+
 /**
  * Job data interfaces
  */
@@ -74,14 +76,14 @@ async function main() {
 
     // Create queues explicitly (required in pg-boss v11+)
     // Queues must exist before workers can register or jobs can be sent
-    await boss.createQueue('scout-papers');
-    await boss.createQueue('enrich-paper');
-    await boss.createQueue('generate-daily-digests');
-    await boss.createQueue('analyze-paper');
+    await boss.createQueue(QUEUE_NAMES.SCOUT_PAPERS);
+    await boss.createQueue(QUEUE_NAMES.ENRICH_PAPER);
+    await boss.createQueue(QUEUE_NAMES.GENERATE_DAILY_DIGESTS);
+    await boss.createQueue(QUEUE_NAMES.ANALYZE_PAPER);
     console.log('[Worker] Queues created');
 
     // Register job handler: scout-papers
-    await boss.work<ScoutPapersJob>('scout-papers', async (jobs) => {
+    await boss.work<ScoutPapersJob>(QUEUE_NAMES.SCOUT_PAPERS, async (jobs) => {
       // pg-boss work handler can receive array of jobs
       const jobArray = Array.isArray(jobs) ? jobs : [jobs];
 
@@ -116,7 +118,7 @@ async function main() {
     });
 
     // Register job handler: enrich-paper
-    await boss.work<EnrichPaperJob>('enrich-paper', async (jobs) => {
+    await boss.work<EnrichPaperJob>(QUEUE_NAMES.ENRICH_PAPER, async (jobs) => {
       // pg-boss work handler can receive array of jobs
       const jobArray = Array.isArray(jobs) ? jobs : [jobs];
 
@@ -154,7 +156,7 @@ async function main() {
     });
 
     // Register job handler: generate-daily-digests
-    await boss.work('generate-daily-digests', async (jobs) => {
+    await boss.work(QUEUE_NAMES.GENERATE_DAILY_DIGESTS, async (jobs) => {
       const jobArray = Array.isArray(jobs) ? jobs : [jobs];
 
       for (const job of jobArray) {
@@ -188,7 +190,7 @@ async function main() {
     });
 
     // Register job handler: analyze-paper
-    await boss.work<CritiquePaperJobData>('analyze-paper', async (jobs) => {
+    await boss.work<CritiquePaperJobData>(QUEUE_NAMES.ANALYZE_PAPER, async (jobs) => {
       const jobArray = Array.isArray(jobs) ? jobs : [jobs];
 
       for (const job of jobArray) {
@@ -222,12 +224,12 @@ async function main() {
     // Schedule daily digest generation at 6:30 AM (after arXiv's 6:00 AM update)
     // Note: Schedule AFTER registering work handler to ensure queue exists
     // First unschedule any existing schedule to avoid conflicts
-    await boss.unschedule('generate-daily-digests').catch(() => {
+    await boss.unschedule(QUEUE_NAMES.GENERATE_DAILY_DIGESTS).catch(() => {
       // Ignore error if schedule doesn't exist
     });
 
     await boss.schedule(
-      'generate-daily-digests',
+      QUEUE_NAMES.GENERATE_DAILY_DIGESTS,
       '30 6 * * *', // Cron: 6:30 AM every day
       {},
       { tz: 'America/New_York' } // arXiv's timezone

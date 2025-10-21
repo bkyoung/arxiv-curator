@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc';
 import { prisma } from '../db';
 import { boss } from '../queue';
+import { QUEUE_NAMES } from '../lib/queue-constants';
 
 // Ensure pg-boss is started
 let bossStarted = false;
@@ -51,7 +52,7 @@ export const analysisRouter = router({
       await ensureBossStarted();
 
       // Enqueue background job for critique generation
-      const jobId = await boss.send('analyze-paper', {
+      const jobId = await boss.send(QUEUE_NAMES.ANALYZE_PAPER, {
         paperId: input.paperId,
         userId: ctx.user.id,
         depth: input.depth,
@@ -96,7 +97,7 @@ export const analysisRouter = router({
       })
     )
     .query(async ({ input }) => {
-      const job = await boss.getJobById('analyze-paper', input.jobId);
+      const job = await boss.getJobById(QUEUE_NAMES.ANALYZE_PAPER, input.jobId);
       return job;
     }),
 
@@ -120,8 +121,11 @@ export const analysisRouter = router({
         },
       });
 
+      // Ensure pg-boss is started before sending jobs
+      await ensureBossStarted();
+
       // Enqueue new job
-      const jobId = await boss.send('critique-paper', {
+      const jobId = await boss.send(QUEUE_NAMES.ANALYZE_PAPER, {
         paperId: input.paperId,
         userId: ctx.user.id,
         depth: input.depth,

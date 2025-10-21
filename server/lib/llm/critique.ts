@@ -21,13 +21,16 @@ export async function generateCritiqueOllama(
 ): Promise<GenerateCritiqueOutput> {
   const { prompt } = input;
 
+  // Use model from env var with sensible default
+  const ollamaModel = process.env.OLLAMA_CRITIQUE_MODEL || 'gemma3:27b';
+
   const response = await fetch(`${process.env.OLLAMA_BASE_URL}/api/generate`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'gemma3:27b',
+      model: ollamaModel,
       prompt,
       stream: false,
       options: {
