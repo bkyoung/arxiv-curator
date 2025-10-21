@@ -17,6 +17,12 @@ const mockDismissMutation = vi.fn();
 const mockThumbsUpMutation = vi.fn();
 const mockThumbsDownMutation = vi.fn();
 const mockHideMutation = vi.fn();
+const mockGetAnalysis = vi.fn();
+const mockGetJobStatus = vi.fn();
+const mockGenerateCritique = vi.fn();
+const mockRequestAnalysis = vi.fn();
+const mockGetSummary = vi.fn();
+const mockRegenerateSummary = vi.fn();
 
 vi.mock('@/lib/trpc', () => ({
   trpc: {
@@ -45,12 +51,38 @@ vi.mock('@/lib/trpc', () => ({
         useMutation: () => ({ mutate: mockHideMutation, isLoading: false }),
       },
     },
+    analysis: {
+      getAnalysis: {
+        useQuery: (params: any) => mockGetAnalysis(params),
+      },
+      getJobStatus: {
+        useQuery: (params: any) => mockGetJobStatus(params),
+      },
+      generateCritique: {
+        useMutation: () => ({ mutate: mockGenerateCritique, isLoading: false }),
+      },
+      requestAnalysis: {
+        useMutation: () => ({ mutate: mockRequestAnalysis, isLoading: false }),
+      },
+    },
+    summaries: {
+      getSummary: {
+        useQuery: (params: any) => mockGetSummary(params),
+      },
+      regenerateSummary: {
+        useMutation: () => ({ mutate: mockRegenerateSummary, isLoading: false }),
+      },
+    },
   },
 }));
 
 describe('Papers Page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default mock return for analysis queries (no analysis exists)
+    mockGetAnalysis.mockReturnValue({ data: null, isLoading: false, refetch: vi.fn() });
+    mockGetJobStatus.mockReturnValue({ data: null, isLoading: false, refetch: vi.fn() });
+    mockGetSummary.mockReturnValue({ data: null, isLoading: false, isError: false, error: null, refetch: vi.fn() });
   });
 
   it('should render loading state initially', () => {
@@ -571,5 +603,178 @@ describe('Papers Page', () => {
     await waitFor(() => {
       expect(mockSaveMutation).toHaveBeenCalled();
     });
+  });
+
+  it('should open detail pane when paper card is clicked', async () => {
+    const user = userEvent.setup();
+    const papersData = {
+      papers: [
+        {
+          id: 'paper-1',
+          arxivId: '2401.00001',
+          version: 1,
+          title: 'Test Paper',
+          authors: ['Alice'],
+          abstract: 'This is a test abstract.',
+          categories: ['cs.AI'],
+          primaryCategory: 'cs.AI',
+          status: 'enriched',
+          pubDate: new Date('2024-01-15'),
+          updatedDate: new Date('2024-01-15'),
+          pdfUrl: 'https://arxiv.org/pdf/2401.00001',
+          rawMetadata: {},
+          codeUrl: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          enriched: null,
+          scores: [],
+          feedback: [],
+        },
+      ],
+      total: 1,
+      hasMore: false,
+    };
+
+    mockListPapers.mockReturnValue({ data: papersData, isLoading: false });
+    mockGetStats.mockReturnValue({ data: undefined });
+
+    render(<PapersPage />);
+
+    // Detail pane should not be visible initially
+    expect(screen.queryByText('Paper Details')).not.toBeInTheDocument();
+
+    // Click on paper card
+    const paperCard = screen.getByText('Test Paper').closest('.cursor-pointer');
+    expect(paperCard).toBeInTheDocument();
+    await user.click(paperCard!);
+
+    // Detail pane should now be visible
+    await waitFor(() => {
+      expect(screen.getByText('Paper Details')).toBeInTheDocument();
+    });
+  });
+
+  it('should close detail pane when X button is clicked', async () => {
+    const user = userEvent.setup();
+    const papersData = {
+      papers: [
+        {
+          id: 'paper-1',
+          arxivId: '2401.00001',
+          version: 1,
+          title: 'Test Paper',
+          authors: ['Alice'],
+          abstract: 'This is a test abstract.',
+          categories: ['cs.AI'],
+          primaryCategory: 'cs.AI',
+          status: 'enriched',
+          pubDate: new Date('2024-01-15'),
+          updatedDate: new Date('2024-01-15'),
+          pdfUrl: 'https://arxiv.org/pdf/2401.00001',
+          rawMetadata: {},
+          codeUrl: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          enriched: null,
+          scores: [],
+          feedback: [],
+        },
+      ],
+      total: 1,
+      hasMore: false,
+    };
+
+    mockListPapers.mockReturnValue({ data: papersData, isLoading: false });
+    mockGetStats.mockReturnValue({ data: undefined });
+
+    render(<PapersPage />);
+
+    // Click on paper card to open detail pane
+    const paperCard = screen.getByText('Test Paper').closest('.cursor-pointer');
+    await user.click(paperCard!);
+
+    // Detail pane should be visible
+    await waitFor(() => {
+      expect(screen.getByText('Paper Details')).toBeInTheDocument();
+    });
+
+    // Click X button to close
+    const closeButton = screen.getByRole('button', { name: '' }); // X button has no text
+    await user.click(closeButton);
+
+    // Detail pane should be closed
+    await waitFor(() => {
+      expect(screen.queryByText('Paper Details')).not.toBeInTheDocument();
+    });
+  });
+
+  it('should highlight selected paper card', async () => {
+    const user = userEvent.setup();
+    const papersData = {
+      papers: [
+        {
+          id: 'paper-1',
+          arxivId: '2401.00001',
+          version: 1,
+          title: 'Paper 1',
+          authors: ['Alice'],
+          abstract: 'Abstract 1',
+          categories: ['cs.AI'],
+          primaryCategory: 'cs.AI',
+          status: 'enriched',
+          pubDate: new Date('2024-01-15'),
+          updatedDate: new Date('2024-01-15'),
+          pdfUrl: 'https://arxiv.org/pdf/2401.00001',
+          rawMetadata: {},
+          codeUrl: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          enriched: null,
+          scores: [],
+          feedback: [],
+        },
+        {
+          id: 'paper-2',
+          arxivId: '2401.00002',
+          version: 1,
+          title: 'Paper 2',
+          authors: ['Bob'],
+          abstract: 'Abstract 2',
+          categories: ['cs.AI'],
+          primaryCategory: 'cs.AI',
+          status: 'enriched',
+          pubDate: new Date('2024-01-15'),
+          updatedDate: new Date('2024-01-15'),
+          pdfUrl: 'https://arxiv.org/pdf/2401.00002',
+          rawMetadata: {},
+          codeUrl: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          enriched: null,
+          scores: [],
+          feedback: [],
+        },
+      ],
+      total: 2,
+      hasMore: false,
+    };
+
+    mockListPapers.mockReturnValue({ data: papersData, isLoading: false });
+    mockGetStats.mockReturnValue({ data: undefined });
+
+    render(<PapersPage />);
+
+    // Click on first paper
+    const paper1Card = screen.getByText('Paper 1').closest('.cursor-pointer');
+    await user.click(paper1Card!);
+
+    // First paper should have ring-2 ring-primary class
+    await waitFor(() => {
+      expect(paper1Card).toHaveClass('ring-2', 'ring-primary');
+    });
+
+    // Second paper should not have ring classes
+    const paper2Card = screen.getByText('Paper 2').closest('.cursor-pointer');
+    expect(paper2Card).not.toHaveClass('ring-2', 'ring-primary');
   });
 });

@@ -80,7 +80,8 @@ export function PaperDetailView({ paper, onSave, onDismiss, onThumbsUp, onThumbs
       if (selectedDepth === 'B') analysisBQuery.refetch();
       if (selectedDepth === 'C') analysisCQuery.refetch();
     }
-  }, [jobStatusQuery.data?.state, selectedDepth, analysisAQuery, analysisBQuery, analysisCQuery]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobStatusQuery.data?.state, selectedDepth]);
 
   const handleAnalysisRequested = (depth: 'A' | 'B' | 'C', jobId: string | null) => {
     setSelectedDepth(depth);

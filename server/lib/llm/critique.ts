@@ -27,7 +27,7 @@ export async function generateCritiqueOllama(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'gemma2:27b',
+      model: 'gemma3:27b',
       prompt,
       stream: false,
       options: {

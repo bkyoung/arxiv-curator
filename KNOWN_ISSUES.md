@@ -284,3 +284,115 @@ Changed to `prisma.summary.deleteMany()`.
 
 **Files Modified:**
 - `server/routers/summaries.ts:64`
+
+---
+
+## Phase 5 Integration Fixes (2025-10-21)
+
+### Critical: React Infinite Render Loop in PaperDetailView
+**Status:** FIXED (2025-10-21)
+**Priority:** Critical
+**Source:** Manual E2E Testing
+
+**Issue:**
+The `useEffect` hook in `PaperDetailView.tsx` included `analysisAQuery`, `analysisBQuery`, and `analysisCQuery` objects in its dependency array. These objects change on every render, causing:
+- Effect runs → refetch triggered
+- Query objects change → effect runs again
+- Infinite loop → "Maximum update depth exceeded" error
+- Component crashes → Analysis panel disappears after showing progress
+
+**Fix:**
+Removed query objects from dependency array, keeping only primitive values (`jobStatusQuery.data?.state` and `selectedDepth`). The `refetch` functions are stable and don't need to be in dependencies.
+
+**Files Modified:**
+- `components/PaperDetailView.tsx:84` - Fixed useEffect dependencies
+
+### Ollama Model Name Mismatch
+**Status:** FIXED (2025-10-21)
+**Priority:** High
+**Source:** Manual E2E Testing
+
+**Issue:**
+Code requested `gemma2:27b` from Ollama, but the Ollama instance only had `gemma3:27b` available. This caused "Ollama API error: Not Found" and all Depth A critique jobs failed.
+
+**Fix:**
+Changed model name to `gemma3:27b` to match available model.
+
+**Files Modified:**
+- `server/lib/llm/critique.ts:30`
+
+### Job Queue Naming Inconsistency
+**Status:** FIXED (2025-10-21)
+**Priority:** High
+**Source:** Manual E2E Testing
+
+**Issue:**
+Router sent jobs to `'critique-paper'` queue but worker listened to `'analyze-paper'` queue, causing jobs to never be processed. Also, `getJobStatus` looked in wrong queue.
+
+**Fix:**
+Standardized all job names to `'analyze-paper'` across router and worker.
+
+**Files Modified:**
+- `server/routers/analysis.ts:54,99,124` - Changed to `'analyze-paper'`
+- `worker/index.ts:80,191` - Queue creation and registration
+
+### pg-boss Not Initialized in Web Server Context
+**Status:** FIXED (2025-10-21)
+**Priority:** High
+**Source:** Manual E2E Testing
+
+**Issue:**
+When sending jobs from the web server (analysis router), pg-boss was not initialized, causing "boss not started" errors.
+
+**Fix:**
+Added `ensureBossStarted()` function in analysis router to initialize pg-boss before sending jobs.
+
+**Files Modified:**
+- `server/routers/analysis.ts:14-20,51` - Added boss startup logic
+
+### Dropdown Background Transparency
+**Status:** FIXED (2025-10-21)
+**Priority:** Medium
+**Source:** Manual E2E Testing
+
+**Issue:**
+Generate Critique dropdown had transparent background, making text difficult to read when overlaid on page content.
+
+**Fix:**
+Added explicit background color classes (`bg-background border-border shadow-lg`).
+
+**Files Modified:**
+- `components/GenerateCritiqueDropdown.tsx:95`
+
+### SummaryPanel Error Messaging
+**Status:** IMPROVED (2025-10-21)
+**Priority:** Low
+**Source:** Manual E2E Testing
+
+**Issue:**
+When no summary exists, SummaryPanel showed red error message "Failed to load summary" which was alarming for normal condition.
+
+**Enhancement:**
+Distinguished between "no summary exists" (subtle italic message) vs actual errors (red error message).
+
+**Files Modified:**
+- `components/SummaryPanel.tsx:67-94`
+
+### Papers Page Missing Detail View Integration
+**Status:** FIXED (2025-10-21)
+**Priority:** High
+**Source:** Phase 5 Integration
+
+**Issue:**
+Papers page only showed card list without clickable interaction or PaperDetailView, making it impossible to access Critical Analysis feature from papers page.
+
+**Fix:**
+Implemented two-pane layout with:
+- Clickable paper cards with visual selection (ring border)
+- Right pane showing PaperDetailView when paper selected
+- State management for `selectedPaperId`
+- Close button to return to list-only view
+
+**Files Modified:**
+- `app/papers/page.tsx` - Added two-pane layout and PaperDetailView integration
+- `__tests__/app/papers/page.test.tsx` - Added comprehensive tRPC mocks for analysis/summaries

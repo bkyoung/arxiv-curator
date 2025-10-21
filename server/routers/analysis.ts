@@ -10,6 +10,15 @@ import { router, protectedProcedure } from '../trpc';
 import { prisma } from '../db';
 import { boss } from '../queue';
 
+// Ensure pg-boss is started
+let bossStarted = false;
+async function ensureBossStarted() {
+  if (!bossStarted) {
+    await boss.start();
+    bossStarted = true;
+  }
+}
+
 export const analysisRouter = router({
   /**
    * Request analysis for a paper
@@ -38,8 +47,11 @@ export const analysisRouter = router({
         };
       }
 
+      // Ensure pg-boss is started before sending jobs
+      await ensureBossStarted();
+
       // Enqueue background job for critique generation
-      const jobId = await boss.send('critique-paper', {
+      const jobId = await boss.send('analyze-paper', {
         paperId: input.paperId,
         userId: ctx.user.id,
         depth: input.depth,
@@ -84,7 +96,7 @@ export const analysisRouter = router({
       })
     )
     .query(async ({ input }) => {
-      const job = await boss.getJobById('critique-paper', input.jobId);
+      const job = await boss.getJobById('analyze-paper', input.jobId);
       return job;
     }),
 

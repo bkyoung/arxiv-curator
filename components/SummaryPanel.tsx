@@ -61,15 +61,32 @@ export function SummaryPanel({ paperId, showRegenerate = false }: SummaryPanelPr
     );
   }
 
-  // Error state
+  // Error state or no summary
   if (isError || !summary) {
+    // If no summary exists, show a subtle message
+    if (!summary && !isError) {
+      return (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Summary</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground italic">
+              No summary available for this paper yet.
+            </p>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    // If there was an actual error, show error message
     return (
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Summary</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-destructive">
             Failed to load summary. {error?.message || 'Please try again later.'}
           </p>
         </CardContent>

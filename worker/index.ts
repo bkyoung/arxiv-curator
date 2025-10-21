@@ -77,7 +77,7 @@ async function main() {
     await boss.createQueue('scout-papers');
     await boss.createQueue('enrich-paper');
     await boss.createQueue('generate-daily-digests');
-    await boss.createQueue('critique-paper');
+    await boss.createQueue('analyze-paper');
     console.log('[Worker] Queues created');
 
     // Register job handler: scout-papers
@@ -187,15 +187,15 @@ async function main() {
       return { success: true };
     });
 
-    // Register job handler: critique-paper
-    await boss.work<CritiquePaperJobData>('critique-paper', async (jobs) => {
+    // Register job handler: analyze-paper
+    await boss.work<CritiquePaperJobData>('analyze-paper', async (jobs) => {
       const jobArray = Array.isArray(jobs) ? jobs : [jobs];
 
       for (const job of jobArray) {
         const jobId = (job as any).id || 'unknown';
         const { paperId, userId, depth } = job.data;
 
-        console.log(`[Worker] Processing critique-paper job ${jobId}`);
+        console.log(`[Worker] Processing analyze-paper job ${jobId}`);
         console.log(`[Worker] Paper ID: ${paperId}, Depth: ${depth}`);
 
         try {

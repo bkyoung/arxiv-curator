@@ -92,7 +92,7 @@ export function GenerateCritiqueDropdown({
           <ChevronDown className="h-4 w-4 ml-2" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-64">
+      <DropdownMenuContent align="end" className="w-64 bg-background border-border shadow-lg">
         {DEPTH_OPTIONS.map(({ depth, label, description, icon: Icon, estimatedTime, usesCloudLLM }) => (
           <DropdownMenuItem
             key={depth}
