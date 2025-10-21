@@ -47,6 +47,12 @@ interface EnrichPaperJob {
   useLocalLLM?: boolean;
 }
 
+interface CritiquePaperJobData {
+  paperId: string;
+  userId: string;
+  depth: 'A' | 'B' | 'C';
+}
+
 /**
  * Main worker process
  */
@@ -59,6 +65,7 @@ async function main() {
     const { scoutEnrichWorkflow } = await import('./workflows/scout-enrich');
     const { enrichPaper } = await import('@/server/agents/enricher');
     const { generateDailyDigestsJob } = await import('./jobs/generate-daily-digests');
+    const { handleCritiquePaperJob } = await import('./jobs/critique-paper');
     const { prisma } = await import('@/server/db');
 
     // Start pg-boss queue
@@ -70,6 +77,7 @@ async function main() {
     await boss.createQueue('scout-papers');
     await boss.createQueue('enrich-paper');
     await boss.createQueue('generate-daily-digests');
+    await boss.createQueue('critique-paper');
     console.log('[Worker] Queues created');
 
     // Register job handler: scout-papers
@@ -172,6 +180,38 @@ async function main() {
           );
           throw new Error(
             `Generate-daily-digests job ${jobId} failed: ${errorMessage}`
+          );
+        }
+      }
+
+      return { success: true };
+    });
+
+    // Register job handler: critique-paper
+    await boss.work<CritiquePaperJobData>('critique-paper', async (jobs) => {
+      const jobArray = Array.isArray(jobs) ? jobs : [jobs];
+
+      for (const job of jobArray) {
+        const jobId = (job as any).id || 'unknown';
+        const { paperId, userId, depth } = job.data;
+
+        console.log(`[Worker] Processing critique-paper job ${jobId}`);
+        console.log(`[Worker] Paper ID: ${paperId}, Depth: ${depth}`);
+
+        try {
+          await handleCritiquePaperJob(job);
+
+          console.log(`[Worker] Job ${jobId} completed`);
+          console.log(`[Worker] Generated ${depth} critique for paper ${paperId}`);
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          console.error(
+            `[Worker] Critique-paper job ${jobId} failed (paperId: ${paperId}, depth: ${depth}):`,
+            error
+          );
+          throw new Error(
+            `Critique-paper job ${jobId} failed for paper ${paperId}: ${errorMessage}`
           );
         }
       }

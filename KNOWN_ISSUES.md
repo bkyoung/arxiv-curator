@@ -100,6 +100,68 @@ try {
 - Prevents resource exhaustion from hanging LLM services
 - Better error handling for slow/unresponsive LLMs
 
+### Cost Estimation for Depth C Analysis
+**Status:** Deferred
+**Priority:** Medium
+**Source:** Phase 5 Planning (Days 3-4)
+**Target Phase:** Phase 6 or later
+
+**Description:**
+Users should be warned about estimated API costs before triggering Depth C analyses, which use cloud LLMs extensively and can be expensive.
+
+**Suggested Enhancement:**
+Add a `getCostEstimate` endpoint that calculates approximate token usage and API cost based on paper length.
+
+**Example**:
+```typescript
+getCostEstimate: protectedProcedure
+  .input(z.object({ paperId: z.string(), depth: z.enum(['A', 'B', 'C']) }))
+  .query(async ({ input }) => {
+    // Calculate estimated tokens (abstract + PDF length)
+    // Return estimated cost in USD
+    // Gemini 2.5 Flash: ~$0.075 input / $0.30 output per million tokens
+  })
+```
+
+**Files Involved:**
+- `server/routers/analysis.ts` (future endpoint)
+- UI components (cost warning before generation)
+
+---
+
+### pgvector Index Optimization
+**Status:** Deferred
+**Priority:** Medium
+**Source:** Phase 5 Planning (Days 3-4)
+**Target Phase:** Performance optimization phase
+
+**Description:**
+The neighbor discovery feature uses pgvector cosine similarity search on the `PaperEnriched.embedding` column. As the dataset grows, this query will become slower without proper indexing.
+
+**Suggested Enhancement:**
+Create an IVFFlat or HNSW index on the embedding column for faster similarity searches.
+
+**Migration**:
+```sql
+-- Create ivfflat index for fast approximate nearest neighbor search
+CREATE INDEX paper_embedding_idx ON "PaperEnriched"
+USING ivfflat (embedding vector_cosine_ops)
+WITH (lists = 100);
+
+-- Or use HNSW for better accuracy (requires pgvector 0.5.0+)
+CREATE INDEX paper_embedding_idx ON "PaperEnriched"
+USING hnsw (embedding vector_cosine_ops);
+```
+
+**Trade-offs:**
+- **Pro**: 10-100x faster similarity searches
+- **Con**: Slightly slower inserts, additional storage overhead
+- **Current**: Acceptable performance for small datasets (<10k papers)
+
+**Files Involved:**
+- `prisma/migrations/` (new migration)
+- `server/agents/analyst.ts` (no code changes needed)
+
 ---
 
 ## Code Quality Improvements (Deferred)

@@ -6,18 +6,22 @@
 
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, Loader2 } from 'lucide-react';
 import { FeedbackActions } from '@/components/FeedbackActions';
 import { ScoreBreakdown } from '@/components/ScoreBreakdown';
 import { WhyShown } from '@/components/WhyShown';
 import { SummaryPanel } from '@/components/SummaryPanel';
+import { GenerateCritiqueDropdown } from '@/components/GenerateCritiqueDropdown';
+import { AnalysisPanel } from '@/components/AnalysisPanel';
 import { BriefingPaper } from '@/types/briefing';
 import { getEvidenceBadges } from '@/lib/paper-helpers';
+import { trpc } from '@/lib/trpc';
 
 interface PaperDetailViewProps {
   paper: BriefingPaper;
@@ -29,6 +33,10 @@ interface PaperDetailViewProps {
 }
 
 export function PaperDetailView({ paper, onSave, onDismiss, onThumbsUp, onThumbsDown, onHide }: PaperDetailViewProps) {
+  const [selectedDepth, setSelectedDepth] = useState<'A' | 'B' | 'C' | null>(null);
+  const [generatingJobId, setGeneratingJobId] = useState<string | null>(null);
+  const [showCostWarning] = useState(true); // Can be made configurable via settings
+
   const score = paper.scores?.[0];
   const formattedDate = new Intl.DateTimeFormat('en-US', {
     year: 'numeric',
@@ -41,6 +49,45 @@ export function PaperDetailView({ paper, onSave, onDismiss, onThumbsUp, onThumbs
 
   const mathDepth = paper.enriched?.mathDepth || 0;
   const mathDepthPercent = Math.round(mathDepth * 100);
+
+  // Check for existing analyses
+  const analysisAQuery = trpc.analysis.getAnalysis.useQuery({ paperId: paper.id, depth: 'A' });
+  const analysisBQuery = trpc.analysis.getAnalysis.useQuery({ paperId: paper.id, depth: 'B' });
+  const analysisCQuery = trpc.analysis.getAnalysis.useQuery({ paperId: paper.id, depth: 'C' });
+
+  // Poll for job status when generating
+  const jobStatusQuery = trpc.analysis.getJobStatus.useQuery(
+    { jobId: generatingJobId! },
+    {
+      enabled: !!generatingJobId,
+      refetchInterval: (query) => {
+        const data = query.state.data;
+        // Stop polling if job is completed or failed, or after 10 minutes
+        if (!data || data.state === 'completed' || data.state === 'failed') {
+          return false;
+        }
+        return 2000; // Poll every 2 seconds
+      },
+    }
+  );
+
+  // Stop polling and refetch analysis when job completes
+  useEffect(() => {
+    if (jobStatusQuery.data?.state === 'completed') {
+      setGeneratingJobId(null);
+      // Refetch the analysis for the selected depth
+      if (selectedDepth === 'A') analysisAQuery.refetch();
+      if (selectedDepth === 'B') analysisBQuery.refetch();
+      if (selectedDepth === 'C') analysisCQuery.refetch();
+    }
+  }, [jobStatusQuery.data?.state, selectedDepth, analysisAQuery, analysisBQuery, analysisCQuery]);
+
+  const handleAnalysisRequested = (depth: 'A' | 'B' | 'C', jobId: string | null) => {
+    setSelectedDepth(depth);
+    setGeneratingJobId(jobId);
+  };
+
+  const isGenerating = !!generatingJobId && jobStatusQuery.data?.state !== 'completed' && jobStatusQuery.data?.state !== 'failed';
 
   return (
     <div className="h-full overflow-y-auto">
@@ -114,6 +161,48 @@ export function PaperDetailView({ paper, onSave, onDismiss, onThumbsUp, onThumbs
 
         {/* AI Summary */}
         <SummaryPanel paperId={paper.id} />
+
+        {/* Critical Analysis */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Critical Analysis</h2>
+            <GenerateCritiqueDropdown
+              paperId={paper.id}
+              showCostWarning={showCostWarning}
+              onAnalysisRequested={handleAnalysisRequested}
+            />
+          </div>
+
+          {/* Progress indicator when generating */}
+          {isGenerating && (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                  <div>
+                    <p className="text-sm font-medium">Generating {selectedDepth} analysis...</p>
+                    <p className="text-xs text-muted-foreground">
+                      {jobStatusQuery.data?.state === 'active'
+                        ? 'Processing...'
+                        : 'Queued...'}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Show analysis panels for each completed depth */}
+          {analysisAQuery.data && (
+            <AnalysisPanel paperId={paper.id} depth="A" showRegenerate />
+          )}
+          {analysisBQuery.data && (
+            <AnalysisPanel paperId={paper.id} depth="B" showRegenerate />
+          )}
+          {analysisCQuery.data && (
+            <AnalysisPanel paperId={paper.id} depth="C" showRegenerate />
+          )}
+        </div>
 
         <Separator />
 

@@ -5,6 +5,7 @@ import { settingsRouter } from './settings';
 import { feedbackRouter } from './feedback';
 import { briefingsRouter } from './briefings';
 import { summariesRouter } from './summaries';
+import { analysisRouter } from './analysis';
 
 export const appRouter = router({
   health: healthRouter,
@@ -13,6 +14,7 @@ export const appRouter = router({
   feedback: feedbackRouter,
   briefings: briefingsRouter,
   summaries: summariesRouter,
+  analysis: analysisRouter,
 });
 
 export type AppRouter = typeof appRouter;

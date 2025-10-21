@@ -86,7 +86,7 @@ Stream D: Summaries (Actually can start after Phase 1!)
 | 3 | Personalization | Ranker Agent, rules engine, vector profiles, feedback system | ✅ Complete |
 | 4 | Briefings & UI | Recommender Agent, three-pane layout, paper cards, hotkeys, digest generation | ✅ Complete |
 | 5 | Summaries | Summary generation (skim), LLM integration (local + cloud), summary UI | ✅ Complete |
-| 6-7 | Critical Analysis | PDF parsing, Analyst Agent (Depths A/B/C), critique UI, job status tracking |
+| 6-7 | Critical Analysis | PDF parsing, Analyst Agent (Depths A/B/C), critique UI, job status tracking | 🚧 Planning |
 | 8 | Collections | Notebooks CRUD, Synthesizer Agent, export (Markdown/PDF/NotebookLM) |
 | 9 | Trends | Topic velocity, emerging topics, SOTA board, technique graphs, visualizations |
 | 10 | Polish | Performance optimization, error handling, testing, monitoring, documentation |

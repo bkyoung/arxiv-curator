@@ -4,9 +4,31 @@
  * Tests for the full paper detail pane
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { PaperDetailView } from '@/components/PaperDetailView';
+
+// Mock tRPC
+vi.mock('@/lib/trpc', () => ({
+  trpc: {
+    analysis: {
+      getAnalysis: {
+        useQuery: vi.fn(() => ({
+          data: null,
+          isLoading: false,
+          isError: false,
+        })),
+      },
+      getJobStatus: {
+        useQuery: vi.fn(() => ({
+          data: null,
+          isLoading: false,
+          isError: false,
+        })),
+      },
+    },
+  },
+}));
 
 // Mock FeedbackActions component
 vi.mock('@/components/FeedbackActions', () => ({
@@ -35,6 +57,20 @@ vi.mock('@/components/WhyShown', () => ({
 vi.mock('@/components/SummaryPanel', () => ({
   SummaryPanel: ({ paperId }: any) => (
     <div data-testid="summary-panel">Summary for {paperId}</div>
+  ),
+}));
+
+// Mock GenerateCritiqueDropdown component
+vi.mock('@/components/GenerateCritiqueDropdown', () => ({
+  GenerateCritiqueDropdown: () => (
+    <div data-testid="generate-critique-dropdown">Generate Critique</div>
+  ),
+}));
+
+// Mock AnalysisPanel component
+vi.mock('@/components/AnalysisPanel', () => ({
+  AnalysisPanel: ({ depth }: any) => (
+    <div data-testid={`analysis-panel-${depth}`}>Analysis {depth}</div>
   ),
 }));
 
