@@ -32,8 +32,13 @@ const envSchema = z.object({
 /**
  * Validated environment variables.
  * This will throw an error at startup if any required variables are missing or invalid.
+ *
+ * Note: Validation is skipped during build time (when SKIP_ENV_VALIDATION=true)
+ * to allow Docker builds without providing runtime secrets.
  */
-export const env = envSchema.parse(process.env);
+export const env = process.env.SKIP_ENV_VALIDATION === 'true'
+  ? (process.env as z.infer<typeof envSchema>)
+  : envSchema.parse(process.env);
 
 // Type export for use in other files
 export type Env = z.infer<typeof envSchema>;
