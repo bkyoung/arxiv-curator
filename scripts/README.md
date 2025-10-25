@@ -1,128 +1,117 @@
-# Scripts Directory
+# Utility Scripts
 
-Utility scripts for manual operations and testing.
+This directory contains utility scripts for development, testing, and manual operations.
 
-## Setup
+## Development Scripts
 
-Before running any scripts, make sure you have a `.env.local` file configured:
+### `create-test-user.ts`
 
+Creates a test user with profile for development/testing purposes.
+
+**Usage:**
 ```bash
-# Copy the example file
-cp .env.local.example .env.local
-
-# Edit with your actual values
-nano .env.local
+npx tsx scripts/create-test-user.ts
 ```
 
-**Required variables**:
-- `DATABASE_URL` - PostgreSQL connection string
-- `MINIO_ACCESS_KEY` - MinIO/S3 access key
-- `MINIO_SECRET_KEY` - MinIO/S3 secret key
-- `AUTH_SECRET` - NextAuth secret (generate with `openssl rand -base64 32`)
+**What it does:**
+- Creates user with ID `test-user-1` (matches hard-coded value in server/trpc.ts)
+- Email: `test@example.com`
+- Creates associated UserProfile with default settings
+- Sets up digestEnabled and default categories
+- Idempotent (safe to run multiple times)
 
-## Available Scripts
-
-### `seed-papers.ts`
-Fetches papers from arXiv for initial setup or testing.
-
-**Usage**:
-```bash
-npm run seed:papers
-```
-
-**What it does**:
-1. Enqueues a `scout-papers` job
-2. Fetches 50 recent papers from cs.AI, cs.LG, cs.CL, cs.CV
-3. Papers are enriched automatically (topics, embeddings, signals)
-
-**Expected time**: 2-5 minutes (watch worker terminal for progress)
-
-**When to use**:
-- First time setup (empty database)
-- Testing with fresh data
-- After clearing papers table
+**Use cases:**
+- Setting up development environment
+- Testing user-specific features
+- Resetting test data
 
 ---
 
-### `generate-digest.ts`
-Generates daily briefings for all users.
+### `trigger-ingestion.ts`
 
-**Usage**:
+Manually triggers paper ingestion job for testing.
+
+**Usage:**
 ```bash
-npm run seed:digest
+npx tsx scripts/trigger-ingestion.ts
 ```
 
-**What it does**:
-1. Enqueues a `generate-daily-digests` job
-2. Runs Recommender agent for each user
-3. Creates Briefing with top-ranked papers
+**What it does:**
+- Queues a scout-papers job with default categories
+- Fetches 50 papers (smaller batch for testing)
+- Returns job ID for monitoring
 
-**Expected time**: 10-30 seconds (watch worker terminal for progress)
+**Use cases:**
+- Testing ingestion pipeline
+- Manually fetching papers outside of schedule
+- Debugging scout/enrich workflow
 
-**When to use**:
-- After ingesting new papers
-- Testing personalization/ranking
-- Manually triggering digest generation
-
----
-
-## Workflow for Fresh Setup
-
+**Monitor job progress:**
 ```bash
-# Terminal 1: Start dev server
-npm run dev
-
-# Terminal 2: Start worker
-npm run worker
-
-# Terminal 3: Seed data
-npm run seed:papers    # Wait 2-5 minutes
-npm run seed:digest    # Wait 10-30 seconds
-
-# Now visit http://localhost:3000
+docker compose -f docker-compose.prod.yml logs -f worker
 ```
 
 ---
 
-## Creating New Scripts
+### `test-production-build.sh`
 
-Template for a new script:
+Tests the production Docker build locally before deployment.
 
-```typescript
-#!/usr/bin/env tsx
-/**
- * Script Name
- *
- * Description of what it does
- */
-
-import { boss, startQueue } from '../server/queue';
-
-async function main() {
-  console.log('🚀 Starting...\n');
-
-  try {
-    await startQueue();
-    console.log('✓ Queue started');
-
-    // Your logic here
-
-    await boss.stop();
-    process.exit(0);
-  } catch (error) {
-    console.error('❌ Error:', error);
-    process.exit(1);
-  }
-}
-
-main();
+**Usage:**
+```bash
+./scripts/test-production-build.sh
 ```
 
-Then add to `package.json`:
-```json
-{
-  "scripts": {
-    "your-script": "tsx scripts/your-script.ts"
-  }
-}
+**What it does:**
+- Builds production Docker images
+- Starts database and storage
+- Runs migrations and seeds
+- Starts all services
+- Tests health endpoint
+
+**Use cases:**
+- Pre-deployment testing
+- Verifying Docker configuration
+- Local production simulation
+
+---
+
+## Production Scripts
+
+### Manual Job Triggers
+
+For production, you can manually trigger jobs using SQL:
+
+**Trigger paper ingestion:**
+```sql
+INSERT INTO pgboss.job (name, data, state, start_after, created_on)
+VALUES (
+  'scout-papers',
+  '{"categories": ["cs.AI", "cs.LG"], "maxResults": 100}'::jsonb,
+  'created',
+  NOW(),
+  NOW()
+);
 ```
+
+**Trigger digest generation:**
+```sql
+INSERT INTO pgboss.job (name, data, state, start_after, created_on)
+VALUES (
+  'generate-daily-digests',
+  '{}'::jsonb,
+  'created',
+  NOW(),
+  NOW()
+);
+```
+
+---
+
+## Notes
+
+- These scripts connect directly to the database via Prisma
+- Ensure DATABASE_URL environment variable is set
+- Scripts are designed for development/testing, not production automation
+- For production job scheduling, see worker/index.ts
+- Test user ID is hard-coded to `test-user-1` to match server/trpc.ts mock auth
