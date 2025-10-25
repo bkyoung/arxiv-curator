@@ -236,6 +236,33 @@ async function main() {
     );
 
     console.log('[Worker] Daily digest job scheduled for 6:30 AM ET');
+
+    // Schedule daily paper ingestion at 6:15 AM (15 min before digest generation)
+    // This allows time for papers to be scouted, enriched, and ranked before digests are created
+    await boss.unschedule(QUEUE_NAMES.SCOUT_PAPERS).catch(() => {
+      // Ignore error if schedule doesn't exist
+    });
+
+    await boss.schedule(
+      QUEUE_NAMES.SCOUT_PAPERS,
+      '15 6 * * *', // Cron: 6:15 AM every day
+      {
+        categories: [
+          'cs.AI', // Artificial Intelligence
+          'cs.LG', // Machine Learning
+          'cs.CL', // Computation and Language
+          'cs.CV', // Computer Vision
+          'cs.IR', // Information Retrieval
+          'cs.NE', // Neural and Evolutionary Computing
+          'stat.ML', // Machine Learning (Statistics)
+        ],
+        maxResults: 200, // Fetch up to 200 papers daily
+      },
+      { tz: 'America/New_York' } // arXiv's timezone
+    );
+
+    console.log('[Worker] Daily paper ingestion job scheduled for 6:15 AM ET');
+    console.log('[Worker] Will ingest from: cs.AI, cs.LG, cs.CL, cs.CV, cs.IR, cs.NE, stat.ML');
     console.log('[Worker] Ready. Waiting for jobs...');
 
     // Keep process running
