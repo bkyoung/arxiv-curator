@@ -166,7 +166,248 @@ USING hnsw (embedding vector_cosine_ops);
 
 ## Code Quality Improvements (Deferred)
 
-### Replace `as any` Type Assertions
+### Structured Logging Implementation
+**Status:** Deferred
+**Priority:** Medium-High
+**Source:** Post-Phase 5 Review
+**Target Phase:** Phase 6 or dedicated infrastructure sprint
+
+**Description:**
+The codebase currently uses `console.log()`, `console.warn()`, and `console.error()` throughout for logging. This approach lacks structure, makes debugging difficult, and doesn't integrate with log aggregation services.
+
+**Suggested Enhancement:**
+Implement structured logging with a proper logger (pino or winston) to provide:
+- Structured JSON logs with context (request IDs, user IDs, paper IDs, etc.)
+- Log levels (trace, debug, info, warn, error, fatal)
+- Integration with log aggregation services (DataDog, Sentry, etc.)
+- Performance (pino is ~5x faster than console.log)
+- Automatic context propagation
+
+**Implementation Example:**
+```typescript
+// server/lib/logger.ts
+import pino from 'pino';
+
+export const logger = pino({
+  level: process.env.LOG_LEVEL || 'info',
+  ...(process.env.NODE_ENV === 'development' && {
+    transport: {
+      target: 'pino-pretty',
+      options: { colorize: true },
+    },
+  }),
+});
+
+// Usage:
+logger.info({ paperId, depth }, 'Starting critique generation');
+logger.error({ error, paperId }, 'PDF download failed');
+```
+
+**Files to Update (Estimate: ~50 locations):**
+- `server/agents/analyst.ts` (~10 console.* calls)
+- `server/lib/pdf-parser.ts` (~5 calls)
+- `server/routers/analysis.ts` (~3 calls)
+- `worker/index.ts` (~15 calls)
+- `worker/jobs/critique-paper.ts` (~3 calls)
+- All other server files (~15 calls)
+
+**Dependencies:**
+```json
+{
+  "pino": "^8.x.x",
+  "pino-pretty": "^10.x.x"  // For development
+}
+```
+
+**Trade-offs:**
+- **Pro**: Better debugging, production monitoring, performance
+- **Con**: Retrofitting becomes harder the longer we wait (already ~50 locations)
+- **Urgency**: Medium-High - should be done before codebase grows much larger
+
+---
+
+### PDF Size Limits and Streaming Validation
+**Status:** Deferred
+**Priority:** Medium
+**Source:** Code Review (claude_review_2025-10-21_12-48.md Issue #8)
+**Target Phase:** Phase 6 or security hardening sprint
+
+**Description:**
+PDF downloads have no size limit, creating a potential DoS vector where malicious or corrupted arXiv entries with multi-GB PDFs could crash the worker via memory exhaustion.
+
+**Suggested Enhancement:**
+Add 50MB size limit with streaming validation that aborts download if limit exceeded.
+
+**Implementation:**
+```typescript
+// server/lib/pdf-parser.ts
+const MAX_PDF_SIZE = 50 * 1024 * 1024; // 50MB
+
+// Check Content-Length header
+const contentLength = response.headers.get('content-length');
+if (contentLength && parseInt(contentLength) > MAX_PDF_SIZE) {
+  throw new Error(`PDF too large: ${contentLength} bytes (max ${MAX_PDF_SIZE})`);
+}
+
+// Stream with size enforcement
+const chunks: Uint8Array[] = [];
+let totalSize = 0;
+const reader = response.body!.getReader();
+
+while (true) {
+  const { done, value } = await reader.read();
+  if (done) break;
+
+  totalSize += value.length;
+  if (totalSize > MAX_PDF_SIZE) {
+    reader.cancel();
+    throw new Error(`PDF download exceeded ${MAX_PDF_SIZE} bytes`);
+  }
+  chunks.push(value);
+}
+```
+
+**Estimated Time:** 1 hour
+**Priority:** Medium - Academic papers rarely exceed 10MB, but protection is prudent
+
+---
+
+### LLM Call Timeouts
+**Status:** Deferred
+**Priority:** Medium
+**Source:** Code Review (claude_review_2025-10-21_12-48.md Issue #9)
+**Target Phase:** Phase 6 or reliability sprint
+
+**Description:**
+LLM API calls (Ollama and Gemini) have no timeout protection. If the LLM service hangs or becomes unresponsive, worker jobs could wait indefinitely, consuming worker concurrency slots.
+
+**Suggested Enhancement:**
+Add 5-minute timeout with AbortController for all LLM calls.
+
+**Implementation:**
+```typescript
+// server/lib/llm/critique.ts
+const LLM_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+
+export async function generateCritiqueOllama(input: GenerateCritiqueInput) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(`${process.env.OLLAMA_BASE_URL}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ /* ... */ }),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Ollama API error: ${response.statusText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`LLM request timed out after ${LLM_TIMEOUT_MS}ms`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+```
+
+**Files to Update:**
+- `server/lib/llm/critique.ts` (both Ollama and Gemini functions)
+- `server/lib/llm/ollama.ts` (summary generation)
+- `server/lib/llm/gemini.ts` (summary generation)
+
+**Estimated Time:** 1 hour
+**Priority:** Medium - Prevents resource exhaustion
+
+---
+
+### Input Validation for Vector Operations
+**Status:** Deferred
+**Priority:** Medium
+**Source:** Code Review (claude_review_2025-10-21_12-48.md Issue #4)
+**Target Phase:** Phase 6
+
+**Description:**
+`findSimilarPapers()` doesn't validate embedding input. Invalid embeddings (NaN, Infinity, empty arrays) or negative limits/dayRange could crash pgvector queries or produce confusing results.
+
+**Suggested Enhancement:**
+```typescript
+// server/agents/analyst.ts
+export async function findSimilarPapers(
+  embedding: number[],
+  limit: number,
+  dayRange: number,
+  excludePaperId?: string
+): Promise<SimilarPaper[]> {
+  // Validate embedding
+  if (embedding.length === 0) {
+    return [];
+  }
+  if (!embedding.every(val => Number.isFinite(val))) {
+    throw new Error('Invalid embedding: all values must be finite numbers');
+  }
+
+  // Validate limit and dayRange
+  if (limit <= 0 || !Number.isInteger(limit)) {
+    throw new Error('limit must be a positive integer');
+  }
+  if (dayRange <= 0 || !Number.isFinite(dayRange)) {
+    throw new Error('dayRange must be a positive number');
+  }
+
+  // Continue with query...
+}
+```
+
+**Estimated Time:** 30 minutes
+**Priority:** Medium - Security and robustness
+
+---
+
+### Extract Magic Numbers to Named Constants
+**Status:** Deferred
+**Priority:** Low-Medium
+**Source:** Code Review (claude_review_2025-10-21_12-48.md Issue #5)
+**Target Phase:** Phase 6
+
+**Description:**
+Hard-coded truncation lengths (20000, 3000, 2000, 4000) scattered throughout analyst.ts lack explanation. Unclear why specific values were chosen and difficult to adjust if LLM context windows change.
+
+**Suggested Enhancement:**
+```typescript
+// server/agents/analyst.ts (top of file)
+/**
+ * PDF Content Truncation Limits
+ *
+ * Gemini 2.5 Flash has 1M token context window
+ * We allocate ~20% for PDF content, ~10% for response, 70% buffer
+ * Approximate conversion: 4 chars = 1 token
+ */
+const PDF_TRUNCATION_LIMITS = {
+  FULL_PDF: 20000,        // ~5000 tokens for Depth C full analysis
+  INTRO: 3000,            // ~750 tokens for paper introduction
+  CONCLUSION: 2000,       // ~500 tokens for conclusion section
+  METHODOLOGY: 4000,      // ~1000 tokens for methods section
+} as const;
+
+// Usage:
+const truncatedPDF = pdfText.length > PDF_TRUNCATION_LIMITS.FULL_PDF
+  ? pdfText.slice(0, PDF_TRUNCATION_LIMITS.FULL_PDF) + '\n\n[Truncated for LLM context]'
+  : pdfText;
+```
+
+**Estimated Time:** 30 minutes
+**Priority:** Low-Medium - Maintainability and documentation
+
+---
+
+### Replace `any` Type Assertions
 **Status:** Deferred
 **Priority:** Low
 **Source:** Code Review (claude_review_2025-10-20_14-12.md)
