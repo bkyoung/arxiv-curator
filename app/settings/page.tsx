@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { NavigationPane } from '@/components/NavigationPane';
 import { Settings2, Database, Cpu, CheckCircle2, Loader2 } from 'lucide-react';
 import { ModelsSettings } from '@/app/settings/models/ModelsSettings';
 import { PreferencesSettings } from '@/app/settings/preferences/PreferencesSettings';
@@ -28,6 +29,12 @@ export default function SettingsPage() {
   // Fetch categories and current settings
   const { data: categories } = trpc.settings.getCategories.useQuery();
   const { data: profile } = trpc.settings.getProfile.useQuery();
+
+  // Fetch saved count for navigation badge
+  const { data: savedFeedback } = trpc.feedback.getHistory.useQuery({
+    action: 'save',
+  });
+  const savedCount = savedFeedback?.length || 0;
 
   // Mutations
   const updateCategories = trpc.settings.updateCategories.useMutation();
@@ -97,16 +104,24 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="container mx-auto py-8 px-4 max-w-4xl">
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <Settings2 className="h-8 w-8" />
-          <h1 className="text-3xl font-bold">Settings</h1>
-        </div>
-        <p className="text-muted-foreground">
-          Configure your research preferences and system settings
-        </p>
+    <div className="flex h-screen">
+      {/* Navigation Pane */}
+      <div className="w-48 border-r bg-muted/10">
+        <NavigationPane savedCount={savedCount} />
       </div>
+
+      {/* Main Content */}
+      <div className="flex-1 overflow-auto">
+        <div className="container mx-auto py-8 px-4 max-w-4xl">
+          <div className="mb-8">
+            <div className="flex items-center gap-3 mb-2">
+              <Settings2 className="h-8 w-8" />
+              <h1 className="text-3xl font-bold">Settings</h1>
+            </div>
+            <p className="text-muted-foreground">
+              Configure your research preferences and system settings
+            </p>
+          </div>
 
       <Tabs defaultValue="sources" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
@@ -275,6 +290,8 @@ export default function SettingsPage() {
           )}
         </TabsContent>
       </Tabs>
+        </div>
+      </div>
     </div>
   );
 }

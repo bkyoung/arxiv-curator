@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { NavigationPane } from '@/components/NavigationPane';
 import { Loader2, Trash2, ThumbsUp, ThumbsDown, Bookmark, EyeOff, X } from 'lucide-react';
 
 export default function FeedbackManagementPage() {
@@ -21,6 +22,12 @@ export default function FeedbackManagementPage() {
   const { data: feedbackHistory, isLoading, refetch } = trpc.feedback.getHistory.useQuery({
     action: selectedAction === 'all' ? undefined : selectedAction,
   });
+
+  // Fetch saved count for navigation badge
+  const { data: savedFeedback } = trpc.feedback.getHistory.useQuery({
+    action: 'save',
+  });
+  const savedCount = savedFeedback?.length || 0;
 
   // Remove feedback mutation
   const removeMutation = trpc.feedback.remove.useMutation({
@@ -84,24 +91,29 @@ export default function FeedbackManagementPage() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="container max-w-4xl mx-auto p-6">
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="container max-w-4xl mx-auto p-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">Feedback History</h1>
-        <p className="text-muted-foreground">
-          View and manage your feedback on papers. Removing feedback will affect your personalized recommendations.
-        </p>
+    <div className="flex h-screen">
+      {/* Navigation Pane */}
+      <div className="w-48 border-r bg-muted/10">
+        <NavigationPane savedCount={savedCount} />
       </div>
+
+      {/* Main Content */}
+      <div className="flex-1 overflow-auto">
+        {isLoading ? (
+          <div className="container max-w-4xl mx-auto p-6">
+            <div className="flex items-center justify-center h-64">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          </div>
+        ) : (
+          <div className="container max-w-4xl mx-auto p-6">
+            <div className="mb-6">
+              <h1 className="text-3xl font-bold mb-2">Feedback History</h1>
+              <p className="text-muted-foreground">
+                View and manage your feedback on papers. Removing feedback will affect your personalized recommendations.
+              </p>
+            </div>
 
       {/* Filter */}
       <div className="mb-6 flex items-center gap-4">
@@ -183,6 +195,9 @@ export default function FeedbackManagementPage() {
           ))}
         </div>
       )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
