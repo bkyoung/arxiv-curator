@@ -6,7 +6,7 @@
  * Three-pane layout: Navigation | Paper List | Paper Detail
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { trpc } from '@/lib/trpc';
 import { NavigationPane } from '@/components/NavigationPane';
 import { BriefingList } from '@/components/BriefingList';
@@ -14,6 +14,7 @@ import { PaperDetailView } from '@/components/PaperDetailView';
 import { HelpModal } from '@/components/HelpModal';
 import { useHotkeys } from '@/hooks/useHotkeys';
 import { Loader2 } from 'lucide-react';
+// import { toast } from 'sonner';
 
 export default function LatestBriefingPage() {
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -22,36 +23,68 @@ export default function LatestBriefingPage() {
   // Fetch today's briefing
   const { data: briefing, isLoading, refetch } = trpc.briefings.getLatest.useQuery();
 
+  // Filter out hidden papers
+  const visiblePapers = useMemo(() => {
+    if (!briefing?.papers) return [];
+
+    return briefing.papers.filter(paper => {
+      const feedback = paper.feedback || [];
+      const isHidden = feedback.some(f => f.action === 'hide');
+      return !isHidden;
+    });
+  }, [briefing?.papers]);
+
   // Fetch saved count for navigation badge
   const { data: savedFeedback } = trpc.feedback.getHistory.useQuery({
     action: 'save',
   });
 
-  // Feedback mutations
+  // Feedback mutations (toasts temporarily disabled due to build issues)
   const saveMutation = trpc.feedback.save.useMutation({
-    onSuccess: () => refetch(),
+    onSuccess: () => {
+      refetch();
+      // toast.success('Paper saved');
+    },
+    onError: () => {
+      // toast.error('Failed to save paper');
+    },
   });
 
   const hideMutation = trpc.feedback.hide.useMutation({
-    onSuccess: () => refetch(),
+    onSuccess: () => {
+      refetch();
+      // toast.success('Paper hidden');
+    },
+    onError: () => {
+      // toast.error('Failed to hide paper');
+    },
   });
 
-  const dismissMutation = trpc.feedback.dismiss.useMutation({
-    onSuccess: () => refetch(),
-  });
 
   const thumbsUpMutation = trpc.feedback.thumbsUp.useMutation({
-    onSuccess: () => refetch(),
+    onSuccess: () => {
+      refetch();
+      // toast.success('Thanks for your feedback!');
+    },
+    onError: () => {
+      // toast.error('Failed to record feedback');
+    },
   });
 
   const thumbsDownMutation = trpc.feedback.thumbsDown.useMutation({
-    onSuccess: () => refetch(),
+    onSuccess: () => {
+      refetch();
+      // toast.success('We\'ll show fewer papers like this');
+    },
+    onError: () => {
+      // toast.error('Failed to record feedback');
+    },
   });
 
   // Keyboard navigation handlers (defined before early returns to satisfy hooks rules)
   const handleNext = () => {
-    if (briefing?.papers) {
-      setSelectedIndex((prev) => Math.min(prev + 1, briefing.papers.length - 1));
+    if (visiblePapers.length > 0) {
+      setSelectedIndex((prev) => Math.min(prev + 1, visiblePapers.length - 1));
     }
   };
 
@@ -60,19 +93,19 @@ export default function LatestBriefingPage() {
   };
 
   const handleSave = () => {
-    if (briefing?.papers?.[selectedIndex]) {
-      saveMutation.mutate({ paperId: briefing.papers[selectedIndex].id });
+    if (visiblePapers[selectedIndex]) {
+      saveMutation.mutate({ paperId: visiblePapers[selectedIndex].id });
     }
   };
 
   const handleHide = () => {
-    if (briefing?.papers?.[selectedIndex]) {
-      hideMutation.mutate({ paperId: briefing.papers[selectedIndex].id });
+    if (visiblePapers[selectedIndex]) {
+      hideMutation.mutate({ paperId: visiblePapers[selectedIndex].id });
     }
   };
 
   const handleOpenPdf = () => {
-    const selectedPaper = briefing?.papers?.[selectedIndex];
+    const selectedPaper = visiblePapers[selectedIndex];
     if (selectedPaper?.pdfUrl) {
       window.open(selectedPaper.pdfUrl, '_blank');
     }
@@ -105,29 +138,28 @@ export default function LatestBriefingPage() {
     );
   }
 
-  if (!briefing || !briefing.papers || briefing.papers.length === 0) {
+  if (!briefing || visiblePapers.length === 0) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
-          <p className="text-muted-foreground">No briefing available for today</p>
+          <p className="text-muted-foreground">No papers available</p>
+          {briefing?.papers && briefing.papers.length > 0 && (
+            <p className="text-sm text-muted-foreground mt-2">
+              All papers have been hidden
+            </p>
+          )}
         </div>
       </div>
     );
   }
 
-  const selectedPaper = briefing.papers[selectedIndex];
+  const selectedPaper = visiblePapers[selectedIndex];
   const savedCount = savedFeedback?.length || 0;
 
   // Individual feedback handlers for the selected paper
   const handleSavePaper = () => {
     if (selectedPaper) {
       saveMutation.mutate({ paperId: selectedPaper.id });
-    }
-  };
-
-  const handleDismissPaper = () => {
-    if (selectedPaper) {
-      dismissMutation.mutate({ paperId: selectedPaper.id });
     }
   };
 
@@ -166,7 +198,7 @@ export default function LatestBriefingPage() {
           </p>
         </div>
         <BriefingList
-          papers={briefing.papers}
+          papers={visiblePapers}
           selectedIndex={selectedIndex}
           onSelectPaper={setSelectedIndex}
         />
@@ -178,7 +210,6 @@ export default function LatestBriefingPage() {
           <PaperDetailView
             paper={selectedPaper}
             onSave={handleSavePaper}
-            onDismiss={handleDismissPaper}
             onThumbsUp={handleThumbsUpPaper}
             onThumbsDown={handleThumbsDownPaper}
             onHide={handleHidePaper}

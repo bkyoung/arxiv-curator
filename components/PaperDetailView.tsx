@@ -26,18 +26,23 @@ import { trpc } from '@/lib/trpc';
 interface PaperDetailViewProps {
   paper: BriefingPaper;
   onSave: () => void;
-  onDismiss: () => void;
   onThumbsUp: () => void;
   onThumbsDown: () => void;
   onHide: () => void;
 }
 
-export function PaperDetailView({ paper, onSave, onDismiss, onThumbsUp, onThumbsDown, onHide }: PaperDetailViewProps) {
+export function PaperDetailView({ paper, onSave, onThumbsUp, onThumbsDown, onHide }: PaperDetailViewProps) {
   const [selectedDepth, setSelectedDepth] = useState<'A' | 'B' | 'C' | null>(null);
   const [generatingJobId, setGeneratingJobId] = useState<string | null>(null);
   const [showCostWarning] = useState(true); // Can be made configurable via settings
 
   const score = paper.scores?.[0];
+
+  // Compute feedback states from paper data
+  const feedback = paper.feedback || [];
+  const isSaved = feedback.some(f => f.action === 'save');
+  const isThumbsUp = feedback.some(f => f.action === 'thumbs_up');
+  const isThumbsDown = feedback.some(f => f.action === 'thumbs_down');
   const formattedDate = new Intl.DateTimeFormat('en-US', {
     year: 'numeric',
     month: 'short',
@@ -129,10 +134,12 @@ export function PaperDetailView({ paper, onSave, onDismiss, onThumbsUp, onThumbs
         {/* Feedback Actions */}
         <FeedbackActions
           onSave={onSave}
-          onDismiss={onDismiss}
           onThumbsUp={onThumbsUp}
           onThumbsDown={onThumbsDown}
           onHide={onHide}
+          isSaved={isSaved}
+          isThumbsUp={isThumbsUp}
+          isThumbsDown={isThumbsDown}
         />
 
         <Separator />

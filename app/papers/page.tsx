@@ -50,9 +50,6 @@ export default function PapersPage() {
   const saveMutation = trpc.feedback.save.useMutation({
     onSuccess: () => refetch(),
   });
-  const dismissMutation = trpc.feedback.dismiss.useMutation({
-    onSuccess: () => refetch(),
-  });
   const thumbsUpMutation = trpc.feedback.thumbsUp.useMutation({
     onSuccess: () => refetch(),
   });
@@ -81,12 +78,6 @@ export default function PapersPage() {
   const handleSavePaper = () => {
     if (selectedPaper) {
       saveMutation.mutate({ paperId: selectedPaper.id });
-    }
-  };
-
-  const handleDismissPaper = () => {
-    if (selectedPaper) {
-      dismissMutation.mutate({ paperId: selectedPaper.id });
     }
   };
 
@@ -298,7 +289,6 @@ export default function PapersPage() {
                       <Separator className="my-3" />
                       <FeedbackActions
                         onSave={() => saveMutation.mutate({ paperId: paper.id })}
-                        onDismiss={() => dismissMutation.mutate({ paperId: paper.id })}
                         onThumbsUp={() => thumbsUpMutation.mutate({ paperId: paper.id })}
                         onThumbsDown={() => thumbsDownMutation.mutate({ paperId: paper.id })}
                         onHide={() => hideMutation.mutate({ paperId: paper.id })}
@@ -360,7 +350,6 @@ export default function PapersPage() {
           <PaperDetailView
             paper={selectedPaper}
             onSave={handleSavePaper}
-            onDismiss={handleDismissPaper}
             onThumbsUp={handleThumbsUpPaper}
             onThumbsDown={handleThumbsDownPaper}
             onHide={handleHidePaper}

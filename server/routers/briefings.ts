@@ -35,7 +35,7 @@ export const briefingsRouter = router({
       briefing = await generateDailyDigest(ctx.user.id);
     }
 
-    // Load papers
+    // Load papers with feedback
     const papers = await prisma.paper.findMany({
       where: { id: { in: briefing.paperIds } },
       include: {
@@ -43,6 +43,10 @@ export const briefingsRouter = router({
         scores: {
           orderBy: { createdAt: 'desc' },
           take: 1,
+        },
+        feedback: {
+          where: { userId: ctx.user.id },
+          orderBy: { createdAt: 'desc' },
         },
       },
     });
@@ -90,7 +94,7 @@ export const briefingsRouter = router({
         });
       }
 
-      // Load papers
+      // Load papers with feedback
       const papers = await prisma.paper.findMany({
         where: { id: { in: briefing.paperIds } },
         include: {
@@ -98,6 +102,10 @@ export const briefingsRouter = router({
           scores: {
             orderBy: { createdAt: 'desc' },
             take: 1,
+          },
+          feedback: {
+            where: { userId: ctx.user.id },
+            orderBy: { createdAt: 'desc' },
           },
         },
       });

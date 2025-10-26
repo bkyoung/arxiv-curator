@@ -5,11 +5,12 @@
 import { Prisma } from '@prisma/client';
 
 /**
- * Paper type with enrichment and scores as returned by briefings router
+ * Paper type with enrichment, scores, and feedback as returned by briefings router
  */
 export type BriefingPaper = Prisma.PaperGetPayload<{
   include: {
     enriched: true;
     scores: true;
+    feedback: true;
   };
 }>;

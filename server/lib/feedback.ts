@@ -31,13 +31,26 @@ export interface FeedbackHistoryInput {
  * Record user feedback on a paper
  *
  * Stores feedback in database for tracking and analytics
+ * Uses upsert to handle cases where feedback already exists
  *
  * @param input - Feedback record input
- * @returns Created feedback record
+ * @returns Created or updated feedback record
  */
 export async function recordFeedback(input: RecordFeedbackInput) {
-  const feedback = await prisma.feedback.create({
-    data: {
+  const feedback = await prisma.feedback.upsert({
+    where: {
+      userId_paperId_action: {
+        userId: input.userId,
+        paperId: input.paperId,
+        action: input.action,
+      },
+    },
+    update: {
+      weight: input.weight ?? 1.0,
+      context: input.context,
+      createdAt: new Date(), // Update timestamp
+    },
+    create: {
       userId: input.userId,
       paperId: input.paperId,
       action: input.action,
@@ -108,9 +121,18 @@ export async function updateUserVectorFromFeedback(input: UpdateVectorInput) {
     return updatedProfile;
   }
 
-  // EMA constants
-  const alpha = 0.1; // Learning rate
-  const beta = 1 - alpha; // Memory retention (0.9)
+  // Action-specific learning rates
+  // thumbs_down: 0.05 (light negative signal)
+  // hide: 0.2 (strong negative signal)
+  // save/thumbs_up: 0.1 (standard positive signal)
+  const getAlpha = (action: string): number => {
+    if (action === 'thumbs_down') return 0.05;
+    if (action === 'hide') return 0.2;
+    return 0.1; // save, thumbs_up
+  };
+
+  const alpha = getAlpha(input.action);
+  const beta = 1 - alpha; // Memory retention
 
   // Calculate new vector using EMA
   const newVector = currentVector.map((oldVal, i) => {

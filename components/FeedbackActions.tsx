@@ -2,7 +2,7 @@
  * FeedbackActions Component
  *
  * Provides feedback action buttons for papers
- * Includes save, dismiss, thumbs up/down, and hide actions
+ * Includes save, thumbs up/down, and hide actions
  */
 
 import { Button } from '@/components/ui/button';
@@ -12,12 +12,10 @@ import {
   ThumbsUp,
   ThumbsDown,
   EyeOff,
-  X,
 } from 'lucide-react';
 
 interface FeedbackActionsProps {
   onSave: () => void;
-  onDismiss: () => void;
   onThumbsUp: () => void;
   onThumbsDown: () => void;
   onHide: () => void;
@@ -30,7 +28,6 @@ interface FeedbackActionsProps {
 
 export function FeedbackActions({
   onSave,
-  onDismiss,
   onThumbsUp,
   onThumbsDown,
   onHide,
@@ -100,18 +97,6 @@ export function FeedbackActions({
       </Button>
 
       <Button
-        variant="outline"
-        size="sm"
-        onClick={onDismiss}
-        disabled={disabled}
-        aria-label="Dismiss"
-        className="gap-2"
-      >
-        <EyeOff className="h-4 w-4" />
-        Dismiss
-      </Button>
-
-      <Button
         variant={isThumbsUp ? 'default' : 'outline'}
         size="sm"
         onClick={onThumbsUp}
@@ -143,7 +128,7 @@ export function FeedbackActions({
         aria-label="Hide"
         className="gap-2"
       >
-        <X className="h-4 w-4" />
+        <EyeOff className="h-4 w-4" />
         Hide
       </Button>
     </div>

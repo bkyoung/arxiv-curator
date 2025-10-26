@@ -100,11 +100,25 @@ vi.mock('@/server/db', () => ({
     },
 
     paper: {
-      findMany: vi.fn(async ({ where }) => {
+      findMany: vi.fn(async ({ where, include }) => {
+        let papers = [];
+
         if (where?.id?.in) {
-          return where.id.in.map((id: string) => mockPrismaPapers.get(id)).filter(Boolean);
+          papers = where.id.in.map((id: string) => mockPrismaPapers.get(id)).filter(Boolean);
+        } else {
+          papers = Array.from(mockPrismaPapers.values());
         }
-        return Array.from(mockPrismaPapers.values());
+
+        // Handle feedback filtering if included
+        if (include?.feedback?.where?.userId) {
+          const userId = include.feedback.where.userId;
+          papers = papers.map(paper => ({
+            ...paper,
+            feedback: paper.feedback ? paper.feedback.filter((f: any) => f.userId === userId) : [],
+          }));
+        }
+
+        return papers;
       }),
     },
   },
@@ -279,6 +293,115 @@ describe('Briefings Router', () => {
       expect(result.papers[0]).toHaveProperty('scores');
       expect(result.papers[0].enriched.topics).toContain('agents');
       expect(result.papers[0].scores[0].finalScore).toBe(0.75);
+    });
+
+    it('should include feedback data for papers', async () => {
+      const caller = briefingsRouter.createCaller({
+        user: { id: 'user-1', email: 'test@test.com' }
+      } as any);
+
+      // Create today's briefing
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const key = `user-1-${today.toISOString().split('T')[0]}`;
+
+      mockPrismaBriefings.set(key, {
+        id: 'briefing-1',
+        userId: 'user-1',
+        date: today,
+        paperIds: ['paper-1', 'paper-2'],
+        paperCount: 2,
+        avgScore: 0.75,
+        status: 'ready',
+        generatedAt: new Date(),
+        viewedAt: null,
+      });
+
+      // Add feedback to mock papers
+      const paper1 = mockPrismaPapers.get('paper-1');
+      const paper2 = mockPrismaPapers.get('paper-2');
+
+      paper1.feedback = [{
+        id: 'feedback-1',
+        userId: 'user-1',
+        paperId: 'paper-1',
+        action: 'thumbs_up',
+        weight: 1.0,
+        context: null,
+        createdAt: new Date(),
+      }];
+
+      paper2.feedback = [{
+        id: 'feedback-2',
+        userId: 'user-1',
+        paperId: 'paper-2',
+        action: 'save',
+        weight: 1.0,
+        context: null,
+        createdAt: new Date(),
+      }];
+
+      const result = await caller.getLatest();
+
+      // Verify feedback is included
+      expect(result.papers[0]).toHaveProperty('feedback');
+      expect(result.papers[1]).toHaveProperty('feedback');
+      expect(result.papers[0].feedback).toHaveLength(1);
+      expect(result.papers[0].feedback[0].action).toBe('thumbs_up');
+      expect(result.papers[1].feedback[0].action).toBe('save');
+    });
+
+    it('should only include current user\'s feedback', async () => {
+      const caller = briefingsRouter.createCaller({
+        user: { id: 'user-1', email: 'test@test.com' }
+      } as any);
+
+      // Create today's briefing
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const key = `user-1-${today.toISOString().split('T')[0]}`;
+
+      mockPrismaBriefings.set(key, {
+        id: 'briefing-1',
+        userId: 'user-1',
+        date: today,
+        paperIds: ['paper-1'],
+        paperCount: 1,
+        avgScore: 0.75,
+        status: 'ready',
+        generatedAt: new Date(),
+        viewedAt: null,
+      });
+
+      // Add feedback from different users
+      const paper1 = mockPrismaPapers.get('paper-1');
+      paper1.feedback = [
+        {
+          id: 'feedback-1',
+          userId: 'user-1',
+          paperId: 'paper-1',
+          action: 'thumbs_up',
+          weight: 1.0,
+          context: null,
+          createdAt: new Date(),
+        },
+        {
+          id: 'feedback-2',
+          userId: 'user-2',
+          paperId: 'paper-1',
+          action: 'thumbs_down',
+          weight: 1.0,
+          context: null,
+          createdAt: new Date(),
+        },
+      ];
+
+      const result = await caller.getLatest();
+
+      // Verify only user-1's feedback is included
+      expect(result.papers[0].feedback).toHaveLength(1);
+      expect(result.papers[0].feedback[0].userId).toBe('user-1');
+      expect(result.papers[0].feedback[0].action).toBe('thumbs_up');
     });
   });
 

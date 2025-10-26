@@ -132,4 +132,35 @@ export const feedbackRouter = router({
         limit: input.limit,
       });
     }),
+
+  /**
+   * Remove (delete) a specific feedback entry
+   */
+  remove: protectedProcedure
+    .input(
+      z.object({
+        feedbackId: z.string(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      // Verify the feedback belongs to the user before deleting
+      const feedback = await prisma.feedback.findUnique({
+        where: { id: input.feedbackId },
+      });
+
+      if (!feedback) {
+        throw new Error('Feedback not found');
+      }
+
+      if (feedback.userId !== ctx.user.id) {
+        throw new Error('Unauthorized: You can only delete your own feedback');
+      }
+
+      // Delete the feedback
+      await prisma.feedback.delete({
+        where: { id: input.feedbackId },
+      });
+
+      return { success: true };
+    }),
 });

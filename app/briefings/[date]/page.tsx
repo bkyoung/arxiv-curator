@@ -44,10 +44,6 @@ export default function BriefingByDatePage() {
     onSuccess: () => refetch(),
   });
 
-  const dismissMutation = trpc.feedback.dismiss.useMutation({
-    onSuccess: () => refetch(),
-  });
-
   const thumbsUpMutation = trpc.feedback.thumbsUp.useMutation({
     onSuccess: () => refetch(),
   });
@@ -148,12 +144,6 @@ export default function BriefingByDatePage() {
     }
   };
 
-  const handleDismissPaper = () => {
-    if (selectedPaper) {
-      dismissMutation.mutate({ paperId: selectedPaper.id });
-    }
-  };
-
   const handleThumbsUpPaper = () => {
     if (selectedPaper) {
       thumbsUpMutation.mutate({ paperId: selectedPaper.id });
@@ -201,7 +191,6 @@ export default function BriefingByDatePage() {
           <PaperDetailView
             paper={selectedPaper}
             onSave={handleSavePaper}
-            onDismiss={handleDismissPaper}
             onThumbsUp={handleThumbsUpPaper}
             onThumbsDown={handleThumbsDownPaper}
             onHide={handleHidePaper}

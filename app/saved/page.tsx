@@ -33,9 +33,6 @@ export default function SavedPage() {
   const saveMutation = trpc.feedback.save.useMutation({
     onSuccess: () => refetch(),
   });
-  const dismissMutation = trpc.feedback.dismiss.useMutation({
-    onSuccess: () => refetch(),
-  });
   const thumbsUpMutation = trpc.feedback.thumbsUp.useMutation({
     onSuccess: () => refetch(),
   });
@@ -201,7 +198,6 @@ export default function SavedPage() {
                   <Separator className="my-3" />
                   <FeedbackActions
                     onSave={() => saveMutation.mutate({ paperId: paper.id })}
-                    onDismiss={() => dismissMutation.mutate({ paperId: paper.id })}
                     onThumbsUp={() => thumbsUpMutation.mutate({ paperId: paper.id })}
                     onThumbsDown={() => thumbsDownMutation.mutate({ paperId: paper.id })}
                     onHide={() => hideMutation.mutate({ paperId: paper.id })}
