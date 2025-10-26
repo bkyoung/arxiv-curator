@@ -134,7 +134,7 @@ export const feedbackRouter = router({
     }),
 
   /**
-   * Remove (delete) a specific feedback entry
+   * Remove (delete) a specific feedback entry by ID
    */
   remove: protectedProcedure
     .input(
@@ -159,6 +159,30 @@ export const feedbackRouter = router({
       // Delete the feedback
       await prisma.feedback.delete({
         where: { id: input.feedbackId },
+      });
+
+      return { success: true };
+    }),
+
+  /**
+   * Remove (delete) feedback by paper ID and action
+   * Useful for toggling feedback states (e.g., unsaving a paper)
+   */
+  removeByPaperAndAction: protectedProcedure
+    .input(
+      z.object({
+        paperId: z.string(),
+        action: z.string(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      // Delete the feedback for this user, paper, and action
+      await prisma.feedback.deleteMany({
+        where: {
+          userId: ctx.user.id,
+          paperId: input.paperId,
+          action: input.action,
+        },
       });
 
       return { success: true };

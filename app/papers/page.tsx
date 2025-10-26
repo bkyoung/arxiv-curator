@@ -50,6 +50,9 @@ export default function PapersPage() {
   const saveMutation = trpc.feedback.save.useMutation({
     onSuccess: () => refetch(),
   });
+  const unsaveMutation = trpc.feedback.removeByPaperAndAction.useMutation({
+    onSuccess: () => refetch(),
+  });
   const thumbsUpMutation = trpc.feedback.thumbsUp.useMutation({
     onSuccess: () => refetch(),
   });
@@ -77,7 +80,12 @@ export default function PapersPage() {
   // Handlers for selected paper feedback
   const handleSavePaper = () => {
     if (selectedPaper) {
-      saveMutation.mutate({ paperId: selectedPaper.id });
+      const isSaved = selectedPaper.feedback?.some((f) => f.action === 'save');
+      if (isSaved) {
+        unsaveMutation.mutate({ paperId: selectedPaper.id, action: 'save' });
+      } else {
+        saveMutation.mutate({ paperId: selectedPaper.id });
+      }
     }
   };
 
@@ -288,7 +296,13 @@ export default function PapersPage() {
                       {/* Feedback Actions */}
                       <Separator className="my-3" />
                       <FeedbackActions
-                        onSave={() => saveMutation.mutate({ paperId: paper.id })}
+                        onSave={() => {
+                          if (isSaved) {
+                            unsaveMutation.mutate({ paperId: paper.id, action: 'save' });
+                          } else {
+                            saveMutation.mutate({ paperId: paper.id });
+                          }
+                        }}
                         onThumbsUp={() => thumbsUpMutation.mutate({ paperId: paper.id })}
                         onThumbsDown={() => thumbsDownMutation.mutate({ paperId: paper.id })}
                         onHide={() => hideMutation.mutate({ paperId: paper.id })}

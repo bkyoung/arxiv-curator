@@ -40,6 +40,10 @@ export default function BriefingByDatePage() {
     onSuccess: () => refetch(),
   });
 
+  const unsaveMutation = trpc.feedback.removeByPaperAndAction.useMutation({
+    onSuccess: () => refetch(),
+  });
+
   const hideMutation = trpc.feedback.hide.useMutation({
     onSuccess: () => refetch(),
   });
@@ -68,7 +72,12 @@ export default function BriefingByDatePage() {
   const handleSave = () => {
     const selectedPaper = briefing?.papers?.[selectedIndex];
     if (selectedPaper) {
-      saveMutation.mutate({ paperId: selectedPaper.id });
+      const isSaved = selectedPaper.feedback?.some((f) => f.action === 'save');
+      if (isSaved) {
+        unsaveMutation.mutate({ paperId: selectedPaper.id, action: 'save' });
+      } else {
+        saveMutation.mutate({ paperId: selectedPaper.id });
+      }
     }
   };
 
@@ -140,7 +149,12 @@ export default function BriefingByDatePage() {
   // Individual feedback handlers for the selected paper
   const handleSavePaper = () => {
     if (selectedPaper) {
-      saveMutation.mutate({ paperId: selectedPaper.id });
+      const isSaved = selectedPaper.feedback?.some((f) => f.action === 'save');
+      if (isSaved) {
+        unsaveMutation.mutate({ paperId: selectedPaper.id, action: 'save' });
+      } else {
+        saveMutation.mutate({ paperId: selectedPaper.id });
+      }
     }
   };
 

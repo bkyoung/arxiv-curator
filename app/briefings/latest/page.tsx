@@ -50,6 +50,16 @@ export default function LatestBriefingPage() {
     },
   });
 
+  const unsaveMutation = trpc.feedback.removeByPaperAndAction.useMutation({
+    onSuccess: () => {
+      refetch();
+      // toast.success('Paper unsaved');
+    },
+    onError: () => {
+      // toast.error('Failed to unsave paper');
+    },
+  });
+
   const hideMutation = trpc.feedback.hide.useMutation({
     onSuccess: () => {
       refetch();
@@ -93,8 +103,14 @@ export default function LatestBriefingPage() {
   };
 
   const handleSave = () => {
-    if (visiblePapers[selectedIndex]) {
-      saveMutation.mutate({ paperId: visiblePapers[selectedIndex].id });
+    const selectedPaper = visiblePapers[selectedIndex];
+    if (selectedPaper) {
+      const isSaved = selectedPaper.feedback?.some((f) => f.action === 'save');
+      if (isSaved) {
+        unsaveMutation.mutate({ paperId: selectedPaper.id, action: 'save' });
+      } else {
+        saveMutation.mutate({ paperId: selectedPaper.id });
+      }
     }
   };
 
@@ -159,7 +175,12 @@ export default function LatestBriefingPage() {
   // Individual feedback handlers for the selected paper
   const handleSavePaper = () => {
     if (selectedPaper) {
-      saveMutation.mutate({ paperId: selectedPaper.id });
+      const isSaved = selectedPaper.feedback?.some((f) => f.action === 'save');
+      if (isSaved) {
+        unsaveMutation.mutate({ paperId: selectedPaper.id, action: 'save' });
+      } else {
+        saveMutation.mutate({ paperId: selectedPaper.id });
+      }
     }
   };
 
