@@ -9,8 +9,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Loader2 } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
 
 interface SummaryPanelProps {
@@ -43,18 +42,13 @@ export function SummaryPanel({ paperId, showRegenerate = false }: SummaryPanelPr
         <CardHeader>
           <CardTitle className="text-base">Summary</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4" data-testid="summary-skeleton">
-          <div className="space-y-2">
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-3/4" />
-          </div>
-          <div className="space-y-2">
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-5/6" />
+        <CardContent className="py-12" data-testid="summary-skeleton">
+          <div className="flex flex-col items-center justify-center gap-3 text-muted-foreground">
+            <Loader2 className="h-8 w-8 animate-spin" />
+            <p className="text-sm font-medium">Generating summary...</p>
+            <p className="text-xs text-center max-w-xs">
+              This may take a moment as we analyze the paper with AI
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -112,30 +106,39 @@ export function SummaryPanel({ paperId, showRegenerate = false }: SummaryPanelPr
         )}
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* What's New Section */}
-        <div>
-          <h3 className="text-sm font-semibold mb-2">What&apos;s New</h3>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            {summary.whatsNew}
-          </p>
-        </div>
+        {regenerateMutation.isPending ? (
+          <div className="py-8 flex flex-col items-center justify-center gap-3 text-muted-foreground">
+            <Loader2 className="h-6 w-6 animate-spin" />
+            <p className="text-sm font-medium">Regenerating summary...</p>
+          </div>
+        ) : (
+          <>
+            {/* What's New Section */}
+            <div>
+              <h3 className="text-sm font-semibold mb-2">What&apos;s New</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                {summary.whatsNew}
+              </p>
+            </div>
 
-        {/* Key Points Section */}
-        <div>
-          <h3 className="text-sm font-semibold mb-2">Key Points</h3>
-          {summary.keyPoints.length > 0 ? (
-            <ul className="space-y-1 text-sm text-muted-foreground">
-              {summary.keyPoints.map((point, index) => (
-                <li key={index} className="flex items-start">
-                  <span className="mr-2">•</span>
-                  <span>{point}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-muted-foreground italic">No key points available</p>
-          )}
-        </div>
+            {/* Key Points Section */}
+            <div>
+              <h3 className="text-sm font-semibold mb-2">Key Points</h3>
+              {summary.keyPoints.length > 0 ? (
+                <ul className="space-y-1 text-sm text-muted-foreground">
+                  {summary.keyPoints.map((point, index) => (
+                    <li key={index} className="flex items-start">
+                      <span className="mr-2">•</span>
+                      <span>{point}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-muted-foreground italic">No key points available</p>
+              )}
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );

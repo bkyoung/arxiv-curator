@@ -52,7 +52,7 @@ describe('SummaryPanel', () => {
   });
 
   describe('Loading State', () => {
-    it('should display skeleton while loading', () => {
+    it('should display loading indicator while generating summary', () => {
       vi.mocked(trpc.summaries.getSummary.useQuery).mockReturnValue({
         data: undefined,
         isLoading: true,
@@ -61,8 +61,10 @@ describe('SummaryPanel', () => {
 
       render(<SummaryPanel paperId="paper-123" />);
 
-      // Should show loading indicator
+      // Should show loading indicator with text
       expect(screen.getByTestId('summary-skeleton')).toBeInTheDocument();
+      expect(screen.getByText('Generating summary...')).toBeInTheDocument();
+      expect(screen.getByText(/This may take a moment as we analyze the paper with AI/)).toBeInTheDocument();
     });
 
     it('should not show summary content while loading', () => {
@@ -228,6 +230,26 @@ describe('SummaryPanel', () => {
       expect(mockRegenerateMutate).toHaveBeenCalledWith({
         paperId: 'paper-123',
       });
+    });
+
+    it('should show loading state while regenerating', () => {
+      vi.mocked(trpc.summaries.getSummary.useQuery).mockReturnValue({
+        data: mockSummary,
+        isLoading: false,
+        isError: false,
+        refetch: vi.fn(),
+      } as any);
+
+      vi.mocked(trpc.summaries.regenerateSummary.useMutation).mockReturnValue({
+        mutate: mockRegenerateMutate,
+        isPending: true,
+      } as any);
+
+      render(<SummaryPanel paperId="paper-123" showRegenerate={true} />);
+
+      expect(screen.getByText('Regenerating summary...')).toBeInTheDocument();
+      expect(screen.queryByText("What's New")).not.toBeInTheDocument();
+      expect(screen.queryByText('Key Points')).not.toBeInTheDocument();
     });
   });
 });
