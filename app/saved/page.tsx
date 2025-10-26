@@ -14,6 +14,7 @@ import { Separator } from '@/components/ui/separator';
 import { ScoreBreakdown } from '@/components/ScoreBreakdown';
 import { FeedbackActions } from '@/components/FeedbackActions';
 import { WhyShown } from '@/components/WhyShown';
+import { NavigationPane } from '@/components/NavigationPane';
 import {
   Bookmark,
   Calendar,
@@ -28,6 +29,9 @@ export default function SavedPage() {
   const { data: savedFeedback, isLoading, refetch } = trpc.feedback.getHistory.useQuery({
     action: 'save',
   });
+
+  // Fetch saved count for navigation badge
+  const savedCount = savedFeedback?.length || 0;
 
   // Feedback mutations
   const saveMutation = trpc.feedback.save.useMutation({
@@ -52,17 +56,25 @@ export default function SavedPage() {
   };
 
   return (
-    <div className="container mx-auto py-8 px-4 max-w-7xl">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <Bookmark className="h-8 w-8" />
-          <h1 className="text-3xl font-bold">Saved Papers</h1>
-        </div>
-        <p className="text-muted-foreground">
-          Papers you&apos;ve saved for later reading
-        </p>
+    <div className="flex h-screen">
+      {/* Navigation Pane */}
+      <div className="w-48 border-r bg-muted/10">
+        <NavigationPane savedCount={savedCount} />
       </div>
+
+      {/* Main Content */}
+      <div className="flex-1 overflow-auto">
+        <div className="container mx-auto py-8 px-4 max-w-7xl">
+          {/* Header */}
+          <div className="mb-8">
+            <div className="flex items-center gap-3 mb-2">
+              <Bookmark className="h-8 w-8" />
+              <h1 className="text-3xl font-bold">Saved Papers</h1>
+            </div>
+            <p className="text-muted-foreground">
+              Papers you&apos;ve saved for later reading
+            </p>
+          </div>
 
       {/* Loading state */}
       {isLoading && (
@@ -211,6 +223,8 @@ export default function SavedPage() {
           })}
         </div>
       )}
+        </div>
+      </div>
     </div>
   );
 }
